@@ -149,13 +149,21 @@ const loadTokens = () => {
 
 export const clearTokens = () => del(localStorage, TOKENS_KEY);
 
-async function postToken(endpoint, params) {
-  const res = await fetch(endpoint, {
+// Token exchange goes through our own backend. Shopify's /oauth/token endpoint
+// sends no CORS headers, so a browser POST to it is blocked. The backend makes
+// the same PKCE exchange server-to-server and returns Shopify's token JSON.
+// Body is JSON here; the backend re-encodes it as application/x-www-form-urlencoded
+// when calling Shopify (as OAuth requires).
+async function postToken(_endpoint, params) {
+  const res = await fetch("/api/auth/shopify/token", {
     method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" },
-    body: new URLSearchParams(params),
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify(params),
   });
-  if (!res.ok) throw new Error(`Shopify could not complete sign-in (${res.status}).`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || body.message || `Shopify could not complete sign-in (${res.status}).`);
+  }
   return res.json();
 }
 

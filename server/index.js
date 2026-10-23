@@ -39,7 +39,20 @@ const verifyIdToken = createIdentity({
 const customers = createCustomerVerifier({
   shopDomain: config.shopDomain, apiVersion: config.shopifyApiVersion, storefrontToken: config.storefrontToken, graphqlUrl: config.customerGraphqlUrl,
 });
-const api = createHandler({ store, config, verifyIdToken, shopify, customers, authService: createAuthService({ apiKey: config.firebaseWebApiKey }) });
+const api = createHandler({
+  store,
+  config,
+  verifyIdToken,
+  shopify,
+  customers,
+  authService: createAuthService({
+    apiKey: config.firebaseWebApiKey,
+    shopify: {
+      tokenUrl: config.shopifyCustomerTokenUrl,
+      clientId: config.shopifyCustomerClientId,
+    },
+  }),
+});
 const staticHandler = fs.existsSync(config.staticDir) ? createStaticHandler(config.staticDir, { embed: { clientId: config.shopifyClientId } }) : null;
 
 const server = http.createServer((req, res) => {

@@ -17,7 +17,7 @@ const MESSAGES = {
   TOKEN_EXPIRED: "Your session has expired. Please sign in again.",
 };
 
-export function createAuthService({ apiKey, fetchImpl = fetch }) {
+export function createAuthService({ apiKey, fetchImpl = fetch, shopify = {} }) {
   async function call(url, body, form = false) {
     if (!apiKey) throw new HttpError(503, "Sign-in is not configured on the server (FIREBASE_WEB_API_KEY).", "not_configured");
     let res;
@@ -75,6 +75,48 @@ export function createAuthService({ apiKey, fetchImpl = fetch }) {
     async refresh(b) {
       const refreshToken = str(b.refreshToken, { required: true, max: 2000, name: "Session" });
       return session(await call("https://securetoken.googleapis.com/v1/token", { grant_type: "refresh_token", refresh_token: refreshToken }, true));
+    },
+
+    // Exchanges a Shopify Customer Account API authorization code (or refresh token)
+    // for tokens. Done server-side because Shopify's token endpoint sends no CORS
+    // headers, so a browser fetch to it is always blocked.
+    async shopifyToken(b) {
+      const endpoint = shopify.tokenUrl;
+      const clientId = shopify.clientId;
+      if (!endpoint || !clientId) {
+        throw new HttpError(503, "Customer sign-in is not configured on the server.", "not_configured");
+      }
+
+      const grantType = str(b.grant_type, { required: true, max: 40, name: "grant_type" });
+      const payload = { grant_type: grantType, client_id: clientId };
+
+      if (grantType === "authorization_code") {
+        payload.code = str(b.code, { required: true, max: 4000, name: "code" });
+        payload.redirect_uri = str(b.redirect_uri, { required: true, max: 500, name: "redirect_uri" });
+        if (b.code_verifier) payload.code_verifier = str(b.code_verifier, { max: 200, name: "code_verifier" });
+      } else if (grantType === "refresh_token") {
+        payload.refresh_token = str(b.refresh_token, { required: true, max: 4000, name: "refresh_token" });
+      } else {
+        throw bad("Unsupported grant_type.");
+      }
+
+      let res;
+      try {
+        res = await fetchImpl(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" },
+          body: new URLSearchParams(payload).toString(),
+        });
+      } catch {
+        throw new HttpError(502, "Could not reach Shopify sign-in. Try again in a moment.", "upstream");
+      }
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const desc = data.error_description || data.error || "Shopify rejected the sign-in.";
+        throw new HttpError(res.status === 400 ? 400 : 502, String(desc), "auth");
+      }
+      return data;
     },
   };
 }

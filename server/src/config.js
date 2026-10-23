@@ -16,6 +16,7 @@ export function loadConfig(env = process.env) {
     if (!env[k]) throw new Error(`Missing required setting ${k}. See server/.env.example.`);
     return env[k];
   };
+  const shopId = env.SHOPIFY_SHOP_ID || "";
   return {
     port: Number(env.PORT) || 8080,
     attributionSecret: need("ATTRIBUTION_SECRET"),
@@ -27,6 +28,11 @@ export function loadConfig(env = process.env) {
     customerGraphqlUrl: env.SHOPIFY_CUSTOMER_GRAPHQL_URL || "",
     shopifyClientId: env.SHOPIFY_CLIENT_ID || "",
     shopifyClientSecret: env.SHOPIFY_CLIENT_SECRET || "",
+    // Customer Account API (OAuth + PKCE, public client). Used by /api/auth/shopify/token.
+    shopifyCustomerTokenUrl:
+      env.SHOPIFY_CUSTOMER_TOKEN_URL ||
+      (shopId ? `https://shopify.com/authentication/${shopId}/oauth/token` : ""),
+    shopifyCustomerClientId: env.SHOPIFY_CUSTOMER_CLIENT_ID || "",
     allowedOrigins: (env.ALLOWED_ORIGINS || "").split(",").map((s) => s.trim()).filter(Boolean),
     staticDir: env.STATIC_DIR || new URL("../../dist", import.meta.url).pathname,
     promoteEveryMinutes: Number(env.PROMOTE_EVERY_MINUTES) || 60,

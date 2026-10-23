@@ -94,6 +94,11 @@ export function createHandler({ store, config, verifyIdToken, shopify, authServi
   // Only partners can create their own account. Admin accounts are created by the owner with scripts/make-admin.js.
   authRoute("/api/auth/partner/signup", ({ body }) => authService.signUp(body));
 
+  // Customer Account API token exchange (called by src/lib/customerAccount.js).
+  // Shopify's /oauth/token endpoint sends no CORS headers, so the browser cannot
+  // call it directly. This route performs the same PKCE exchange server-to-server.
+  authRoute("/api/auth/shopify/token", ({ body }) => authService.shopifyToken(body));
+
   add("POST", "/api/webhooks/shopify", { auth: false, raw: true }, async ({ raw, headers, body }) => {
     if (!verifyWebhook(raw, headers["x-shopify-hmac-sha256"], config.webhookSecret)) throw new HttpError(401, "Invalid signature.");
     const topic = headers["x-shopify-topic"];
