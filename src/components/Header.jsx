@@ -5,33 +5,9 @@ import { NAV_LINKS } from "../data/content.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useCart } from "../context/CartContext.jsx";
 import {
-  BTN_PRIMARY_HEADER, BTN_CURRENCY, BTN_SIGNIN_DESKTOP, BTN_SIGNUP_DESKTOP,
+  BTN_PRIMARY_HEADER, BTN_SIGNIN_DESKTOP, BTN_SIGNUP_DESKTOP,
   BTN_SIGNIN_MOBILE, BTN_SIGNUP_MOBILE, BTN_MENU, BTN_MOBILE_CTA, CART_LINK,
 } from "../cls.js";
-
-function Chevron() {
-  return (
-    <svg className="h-3.5 w-3.5 transition-transform " viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-      <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-    </svg>
-  );
-}
-
-function CurrencyButton({ extra = "" }) {
-  return (
-    <button
-      className={`${BTN_CURRENCY}${extra}`}
-      type="button"
-      aria-haspopup="listbox"
-      aria-expanded="false"
-      aria-label="Country and currency: India, INR"
-    >
-      <span aria-hidden="true">🇮🇳</span>
-      <span className="font-medium">INR</span>
-      <Chevron />
-    </button>
-  );
-}
 
 function CartLink({ className, onClick }) {
   const { count } = useCart();
@@ -54,7 +30,6 @@ export default function Header() {
   const { isAuthed } = useAuth();
   const home = pathname === "/";
   const homeProps = home ? { "data-status": "active", "aria-current": "page" } : {};
-  // Separate pages (Products, About Us, Contact Us) highlight when you are on them; in-page anchors do not.
   const activeProps = (l) =>
     l.page && (pathname === l.to || pathname.startsWith(`${l.to}/`)) ? { "data-status": "active", "aria-current": "page" } : {};
   const close = () => setOpen(false);
@@ -79,9 +54,8 @@ export default function Header() {
             <Link className={BTN_PRIMARY_HEADER} to="/products">
               Get Masterbook <ArrowUpRight size={15} aria-hidden="true" />
             </Link>
-            <div className="relative hidden xl:block"><CurrencyButton /></div>
-            <CartLink className={`${CART_LINK} hidden xl:grid`} />
-            <div className="hidden items-center gap-2 xl:flex">
+            <CartLink className={CART_LINK} />
+            <div className="flex items-center gap-2">
               {isAuthed ? (
                 <Link className={BTN_SIGNUP_DESKTOP} to="/account">Account</Link>
               ) : (
@@ -107,7 +81,7 @@ export default function Header() {
         <nav
           id="site-mobile-navigation"
           aria-label="Masterbook navigation"
-          className={`site-mobile-nav absolute inset-x-0 top-full max-h-[calc(100dvh-4rem)] overflow-y-auto border-t border-border bg-card p-4 text-sm shadow-xl xl:hidden ${open ? "site-mobile-nav-open" : ""}`}
+          className={`site-mobile-nav absolute inset-x-0 top-full max-h-[calc(100dvh-4rem)] overflow-y-auto border-t border-border bg-card p-4 text-sm shadow-xl sm:hidden ${open ? "site-mobile-nav-open" : ""}`}
           aria-hidden={!open}
           inert={open ? undefined : ""}
         >
@@ -123,13 +97,10 @@ export default function Header() {
             </Link>
           </div>
           <div className="site-mobile-nav-utilities">
-            <div className="flex items-center gap-2 xl:hidden">
-              <div className="relative min-w-0 flex-1">
-                <CurrencyButton extra=" w-full justify-center" />
-              </div>
+            <div className="flex items-center gap-2 sm:hidden">
               <CartLink className={CART_LINK} onClick={close} />
             </div>
-            <div className={`grid gap-2 xl:hidden ${isAuthed ? "grid-cols-1" : "grid-cols-2"}`}>
+            <div className={`grid gap-2 sm:hidden ${isAuthed ? "grid-cols-1" : "grid-cols-2"}`}>
               {isAuthed ? (
                 <Link className={BTN_SIGNUP_MOBILE} to="/account" onClick={close}>Account</Link>
               ) : (
