@@ -127,5 +127,12 @@ select.cm-input { appearance: auto; }
   .pt-table td[data-label=""]::before { display: none; }
   .pt-table td[data-label=""] { justify-content: flex-end; }
 }
+
    html:has(.pt-app), body:has(.pt-app), html:has(.pt-embedded), body:has(.pt-embedded) { background: #ebebeb; }
    .pt-app, .pt-embedded-root { background: #ebebeb; }
+
+
+/* Page background for the affiliate dashboards (admin, partner and the Shopify-embedded admin) */
+html:has(.pt-app), body:has(.pt-app), html:has(.pt-embedded), body:has(.pt-embedded) { background: #ebebeb; }
+.pt-app, .pt-embedded-root { background: #ebebeb; }
+

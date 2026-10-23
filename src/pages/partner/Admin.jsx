@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { Navigate } from "react-router-dom";
-import { Users, Receipt, Banknote, FileText, Percent, ScrollText } from "lucide-react";
+import { Users, Receipt, Banknote, FileText, Percent, ScrollText, BookOpen } from "lucide-react";
 import { useAdmin } from "../../context/AdminContext.jsx";
 import { api, inr, pct, rateText } from "../../lib/affiliateApi.js";
 import { Field, TextInput } from "../../components/Field.jsx";
 import { Shell, Tabs, SideNav, SidebarLayout, Stat, Badge, Notice, Loading, Table, useLoad, day } from "./ui.jsx";
-import { Payouts, Reports, Rules, Audit } from "./AdminMore.jsx";
+import { Payouts, Reports, Rules, Audit, Ebooks } from "./AdminMore.jsx";
 
 const money = (k) => (r) => inr(r[k]);
 
@@ -200,6 +200,7 @@ export function AdminConsole({ can, layout = "sidebar" }) {
     can("partners") && { id: "commissions", label: "Commissions", icon: Receipt },
     can("finance") && { id: "payouts", label: "Payouts", icon: Banknote },
     (can("partners") || can("finance")) && { id: "reports", label: "Reports", icon: FileText },
+    (can("partners") || can("finance")) && { id: "ebooks", label: "E-books", icon: BookOpen },
     can("partners") && { id: "rules", label: "Affiliate rules", icon: Percent },
     can("finance") && { id: "audit", label: "Audit log", icon: ScrollText },
   ].filter(Boolean);
@@ -210,6 +211,7 @@ export function AdminConsole({ can, layout = "sidebar" }) {
       {active === "commissions" && <Commissions />}
       {active === "payouts" && <Payouts />}
       {active === "reports" && <Reports />}
+      {active === "ebooks" && <Ebooks />}
       {active === "rules" && <Rules />}
       {active === "audit" && <Audit />}
     </>

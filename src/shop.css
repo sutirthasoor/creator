@@ -157,3 +157,13 @@
 }
 
 .cm-card .cm-details { width: 100%; }
+
+/* e-book library and reader */
+.cm-library { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.cm-library-item { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 16px; }
+.cm-library-item .cm-card-title { margin: 0 0 4px; }
+.cm-library-item p { margin: 0; }
+.cm-reader-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-bottom: 14px; }
+.cm-reader-title { flex: 1 1 200px; margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.cm-reader-actions { display: inline-flex; flex-wrap: wrap; gap: 8px; }
+.cm-reader-frame { display: block; width: 100%; height: min(82vh, 1100px); min-height: 480px; border: 1px solid var(--border); border-radius: 14px; background: var(--card); box-shadow: var(--shadow-card); }

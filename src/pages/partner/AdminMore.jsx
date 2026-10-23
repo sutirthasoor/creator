@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { api, inr, rateText } from "../../lib/affiliateApi.js";
 import { Field, TextInput } from "../../components/Field.jsx";
+import { listProducts } from "../../lib/commerce.js";
 import { Badge, Notice, Loading, Table, useLoad, day } from "./ui.jsx";
 
 function NewPayout({ onCreated }) {
@@ -223,6 +224,52 @@ export function Audit() {
           { key: "details", label: "Details", render: (r) => <code className="cm-code-sm">{JSON.stringify(r.details)}</code> },
         ]} />
       )}
+    </>
+  );
+}
+
+// E-books: paste the PDF link for each product. A customer who pays for the product can then read it in their library.
+export function Ebooks() {
+  const { data, error, loading, reload } = useLoad(async () => {
+    const [saved, shop] = await Promise.all([api("/admin/ebooks"), listProducts({ first: 100 }).catch(() => ({ products: [] }))]);
+    const byId = new Map(saved.ebooks.map((e) => [e.id, e]));
+    const rows = shop.products.map((p) => {
+      const id = String(p.id).split("/").pop();
+      const e = byId.get(id);
+      return { id, title: p.title, url: (e && e.url) || "", saved: Boolean(e && e.url) };
+    });
+    for (const e of saved.ebooks) if (!rows.some((r) => r.id === e.id)) rows.push({ id: e.id, title: e.title || "(not in the shop list)", url: e.url || "", saved: Boolean(e.url) });
+    return rows;
+  });
+  const [draft, setDraft] = useState({});
+  const [busy, setBusy] = useState("");
+  const [msg, setMsg] = useState({ kind: "success", text: "" });
+
+  async function save(r) {
+    const url = (draft[r.id] !== undefined ? draft[r.id] : r.url).trim();
+    setBusy(r.id); setMsg({ kind: "success", text: "" });
+    try {
+      await api(`/admin/ebooks/${r.id}`, { method: "PUT", body: { title: r.title, url } });
+      setMsg({ kind: "success", text: url ? `Saved the link for ${r.title}.` : `Removed the link for ${r.title}.` });
+      setDraft((d) => { const n = { ...d }; delete n[r.id]; return n; });
+      reload();
+    } catch (e) { setMsg({ kind: "error", text: e.message }); } finally { setBusy(""); }
+  }
+
+  if (loading) return <Loading />;
+  if (error) return <Notice>{error}</Notice>;
+  return (
+    <>
+      <p className="cm-muted">For each e-book, paste the PDF link (Google Drive: Share, then &ldquo;Anyone with the link&rdquo;). Customers who pay for it can read it in <strong>My library</strong>. They never see this link.</p>
+      <Notice kind={msg.kind}>{msg.text}</Notice>
+      <Table rows={data} empty="No products found. Add products in Shopify first." columns={[
+        { key: "title", label: "E-book", render: (r) => <><strong>{r.title}</strong><br /><span className="cm-muted">Product ID {r.id}</span></> },
+        { key: "state", label: "Status", render: (r) => <span className={`pt-badge pt-badge-${r.saved ? "good" : "muted"}`}>{r.saved ? "Link added" : "No link yet"}</span> },
+        { key: "url", label: "PDF link", render: (r) => (
+          <input className="cm-input" aria-label={`PDF link for ${r.title}`} placeholder="https://drive.google.com/file/d/…" value={draft[r.id] !== undefined ? draft[r.id] : r.url} onChange={(e) => setDraft({ ...draft, [r.id]: e.target.value })} />
+        ) },
+        { key: "act", label: "", render: (r) => <button className="cm-btn cm-btn-primary cm-btn-sm" disabled={busy === r.id} onClick={() => save(r)}>{busy === r.id ? "Saving…" : "Save"}</button> },
+      ]} />
     </>
   );
 }

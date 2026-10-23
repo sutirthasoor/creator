@@ -2,6 +2,7 @@ import { toPaise, addDays, nowIso } from "./util.js";
 import { loadSettings } from "./settings.js";
 import { resolveAttribution } from "./attribution.js";
 import { computeCommission, reduceCommission, effective } from "./commission.js";
+import { accessDocsForOrder, accessId } from "./library.js";
 
 class RetryLater extends Error {
   constructor(msg) { super(msg); this.retry = true; }
@@ -71,6 +72,7 @@ export async function handleOrderPaid(store, { order, webhookId, secret, now = n
     const existing = await tx.get("orders", orderId);
     if (seen || existing) return { duplicate: true, orderId };
     tx.set("orders", orderId, orderDoc);
+    for (const a of accessDocsForOrder(order, now)) tx.set("access", a.id, a.data); // unlocks the e-books for this customer
     if (commission) tx.set("commissions", orderId, commission);
     if (attribution.blocked || (attribution.attributed && attribution.flagged)) {
       tx.add("audit", {
@@ -109,7 +111,12 @@ export async function handleRefund(store, { refund, webhookId, now = nowIso() })
       lines: orderLines, refundedPaise: order.refundedPaise + refundedPaise, refundIds: [...order.refundIds, refundId],
       status: order.refundedPaise + refundedPaise >= order.totalPaise ? "refunded" : "partially_refunded",
     };
+    // Books that were fully refunded (or every book, if the whole order was refunded) are locked again.
+    const lockIds = new Set(orderLines.filter((l) => l.productId && (orderPatch.status === "refunded" || l.refundedQty >= l.qty)).map((l) => l.productId));
+    const locks = [];
+    for (const p of lockIds) { const a = await tx.get("access", accessId(orderId, p)); if (a && a.status === "active") locks.push(a.id); }
     tx.merge("orders", orderId, orderPatch);
+    for (const id of locks) tx.merge("access", id, { status: "revoked", revokedAt: now, revokedReason: "refund" });
 
     let cut = 0;
     if (commission) {
@@ -153,7 +160,13 @@ export async function handleFullReversal(store, { orderId, topic, ref, webhookId
     if (seen) return { duplicate: true };
     if (!order) throw new RetryLater(`Order ${orderId} not recorded yet`);
     const commission = await tx.get("commissions", orderId);
+    const locks = [];
+    for (const p of new Set((order.lines || []).map((l) => l.productId).filter(Boolean))) {
+      const a = await tx.get("access", accessId(orderId, p));
+      if (a && a.status === "active") locks.push(a.id);
+    }
     let cut = 0;
+    for (const id of locks) tx.merge("access", id, { status: "revoked", revokedAt: now, revokedReason: topic === "disputes/create" ? "chargeback" : "cancelled" });
     tx.merge("orders", orderId, { status: topic === "disputes/create" ? "chargeback" : "cancelled" });
     if (commission) {
       const c = { ...commission, lines: commission.lines.map((l) => ({ ...l })) };

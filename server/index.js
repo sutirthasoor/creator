@@ -10,6 +10,7 @@ import { createShopifyAdmin } from "./src/shopify.js";
 import { createAuthService } from "./src/auth.js";
 import { createStaticHandler } from "./src/static.js";
 import { createIdentity } from "./src/shopifySession.js";
+import { createCustomerVerifier } from "./src/library.js";
 import { promoteDue } from "./src/lifecycle.js";
 
 loadEnvFile();
@@ -35,38 +36,13 @@ const verifyIdToken = createIdentity({
   firebaseVerify,
   shopify: { clientId: config.shopifyClientId, clientSecret: config.shopifyClientSecret, shopDomain: config.shopDomain },
 });
-const api = createHandler({ store, config, verifyIdToken, shopify, authService: createAuthService({ apiKey: config.firebaseWebApiKey }) });
+const customers = createCustomerVerifier({
+  shopDomain: config.shopDomain, apiVersion: config.shopifyApiVersion, storefrontToken: config.storefrontToken, graphqlUrl: config.customerGraphqlUrl,
+});
+const api = createHandler({ store, config, verifyIdToken, shopify, customers, authService: createAuthService({ apiKey: config.firebaseWebApiKey }) });
 const staticHandler = fs.existsSync(config.staticDir) ? createStaticHandler(config.staticDir, { embed: { clientId: config.shopifyClientId } }) : null;
 
-// CORS: scheme + host + port only (no paths). The browser's Origin header never includes a path.
-const allowedOrigins = new Set([
-  "http://localhost:5173",
-  "https://shopify-creators-360.netlify.app",
-]);
-
 const server = http.createServer((req, res) => {
-  const origin = req.headers.origin;
-
-  // 1. CORS headers (echo back only trusted origins)
-  if (origin && allowedOrigins.has(origin)) {
-    res.setHeader("Access-Control-Allow-Origin", origin);
-    res.setHeader("Vary", "Origin");
-    res.setHeader("Access-Control-Allow-Credentials", "true");
-    res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
-    res.setHeader(
-      "Access-Control-Allow-Headers",
-      req.headers["access-control-request-headers"] || "Content-Type,Authorization"
-    );
-    res.setHeader("Access-Control-Max-Age", "86400");
-  }
-
-  // 2. Answer preflight immediately — never fall through to the API handler
-  if (req.method === "OPTIONS") {
-    res.writeHead(204);
-    return res.end();
-  }
-
-  // 3. Normal routing
   const path = (req.url || "").split("?")[0];
   if (path === "/api" || path.startsWith("/api/")) return api(req, res);
   if (staticHandler) return staticHandler(req, res);

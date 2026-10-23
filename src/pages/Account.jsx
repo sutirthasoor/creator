@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
-import { LogOut, Mail, Phone, Receipt, ExternalLink } from "lucide-react";
+import { LogOut, Mail, Phone, Receipt, ExternalLink, BookOpen } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useCart } from "../context/CartContext.jsx";
 import { formatMoney, formatDate, humanize } from "../lib/money.js";
@@ -50,6 +50,12 @@ export default function Account() {
               <div><dt><Mail size={15} aria-hidden="true" /> Email</dt><dd>{customer.email}</dd></div>
               {customer.phone && <div><dt><Phone size={15} aria-hidden="true" /> Phone</dt><dd>{customer.phone}</dd></div>}
             </dl>
+          </section>
+
+          <section className="cm-card" aria-labelledby="library-title">
+            <h2 id="library-title" className="cm-card-title"><BookOpen size={18} aria-hidden="true" /> My library</h2>
+            <p className="cm-muted">Read the e-books you have bought.</p>
+            <Link className="cm-btn cm-btn-primary" to="/library">Open my library</Link>
           </section>
 
           <section className="cm-card cm-orders" aria-labelledby="orders-title">

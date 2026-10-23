@@ -23,10 +23,12 @@ export function loadConfig(env = process.env) {
     firebaseWebApiKey: need("FIREBASE_WEB_API_KEY"),
     shopDomain: env.SHOPIFY_STORE_DOMAIN || "",
     shopifyApiVersion: env.SHOPIFY_API_VERSION || "2026-07",
+    storefrontToken: env.SHOPIFY_STOREFRONT_TOKEN || "",
+    customerGraphqlUrl: env.SHOPIFY_CUSTOMER_GRAPHQL_URL || "",
     shopifyClientId: env.SHOPIFY_CLIENT_ID || "",
     shopifyClientSecret: env.SHOPIFY_CLIENT_SECRET || "",
     allowedOrigins: (env.ALLOWED_ORIGINS || "").split(",").map((s) => s.trim()).filter(Boolean),
-    staticDir: env.STATIC_DIR || new URL("../dist", import.meta.url).pathname,
+    staticDir: env.STATIC_DIR || new URL("../../dist", import.meta.url).pathname,
     promoteEveryMinutes: Number(env.PROMOTE_EVERY_MINUTES) || 60,
   };
 }

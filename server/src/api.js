@@ -4,6 +4,7 @@ import { verifyWebhook } from "./shopify.js";
 import { handleOrderPaid, handleRefund, handleFullReversal } from "./orders.js";
 import { approveCommissions, promoteDue, adjustCommission, createPayout, markPayoutPaid, cancelPayout } from "./lifecycle.js";
 import { applyAsInfluencer, updateOwnProfile, changeStatus, setInfluencerRate, setProductRate, recordClick } from "./influencers.js";
+import { HANDLED, listLibrary, openBook, streamBook, listEbooks, setEbook } from "./library.js";
 import { influencerSummary, REPORTS, toCsv } from "./reports.js";
 
 const json = (res, status, body, headers = {}) => {
@@ -41,12 +42,13 @@ function limiter(max, windowMs) {
 
 const ADMIN_ROLES = ["super_admin", "admin"];
 
-export function createHandler({ store, config, verifyIdToken, shopify, authService, clock = nowIso }) {
+export function createHandler({ store, config, verifyIdToken, shopify, authService, customers, fetchImpl = fetch, clock = nowIso }) {
   const routes = [];
   const add = (method, path, opts, fn) => routes.push({ method, parts: path.split("/").filter(Boolean), opts, fn });
   const clickLimit = limiter(30, 60_000);
   const applyLimit = limiter(10, 3_600_000);
   const authLimit = limiter(20, 600_000);
+  const libLimit = limiter(120, 600_000);
 
   const requirePerm = (user, perm) => {
     if (!ADMIN_ROLES.includes(user.role)) throw forbidden();
@@ -104,6 +106,17 @@ export function createHandler({ store, config, verifyIdToken, shopify, authServi
       case "disputes/create": return handleFullReversal(store, { orderId: body.order_id, topic, ref: body.id, webhookId, now });
       default: return { ignored: topic };
     }
+  });
+
+  /* ---------- customer library (signed in with the store account) ---------- */
+  add("GET", "/api/library", { auth: "customer" }, async ({ customer, ip }) => { libLimit(ip); return listLibrary(store, customer.email); });
+  add("POST", "/api/library/:productId/open", { auth: "customer" }, async ({ customer, params, ip }) => {
+    libLimit(ip);
+    return openBook(store, customer.email, params.productId, { secret: config.attributionSecret });
+  });
+  add("GET", "/api/library/file/:token", { auth: false }, async ({ params, res, cors, ip }) => {
+    libLimit(ip);
+    return streamBook(store, params.token, { secret: config.attributionSecret, fetchImpl, res, headers: cors, frameOrigins: config.allowedOrigins || [] });
   });
 
   /* ---------- signed-in user ---------- */
@@ -229,6 +242,10 @@ export function createHandler({ store, config, verifyIdToken, shopify, authServi
     return query.format === "csv" ? { csv: toCsv(rows), filename: `${params.name}-${(query.from || "all")}.csv` } : { rows };
   });
 
+  add("GET", "/api/admin/ebooks", { perm: ["partners", "finance"] }, async () => ({ ebooks: await store.query("ebooks") }));
+  add("PUT", "/api/admin/ebooks/:productId", { perm: ["partners", "finance"] }, async ({ user, params, body }) =>
+    setEbook(store, params.productId, body, user, { now: clock() }));
+
   add("GET", "/api/admin/audit", { perm: "finance" }, async ({ query }) => {
     const where = query.action ? [["action", "==", query.action]] : [];
     return { entries: await store.query("audit", { where, orderBy: ["at", "desc"], limit: 300 }) };
@@ -251,7 +268,7 @@ export function createHandler({ store, config, verifyIdToken, shopify, authServi
   return async function handler(req, res) {
     const origin = req.headers.origin;
     const cors = allowed(origin)
-      ? { "Access-Control-Allow-Origin": origin, "Vary": "Origin", "Access-Control-Allow-Headers": "Authorization, Content-Type", "Access-Control-Allow-Methods": "GET,POST,PUT,OPTIONS" }
+      ? { "Access-Control-Allow-Origin": origin, "Vary": "Origin", "Access-Control-Allow-Headers": "Authorization, Content-Type, X-Customer-Mode", "Access-Control-Allow-Methods": "GET,POST,PUT,OPTIONS" }
       : {};
     try {
       if (req.method === "OPTIONS") { res.writeHead(204, cors); return res.end(); }
@@ -272,7 +289,12 @@ export function createHandler({ store, config, verifyIdToken, shopify, authServi
       }
 
       let user = null;
-      if (route.opts.auth !== false) {
+      let customer = null;
+      if (route.opts.auth === "customer") {
+        const h = req.headers.authorization || "";
+        if (!h) throw new HttpError(401, "Please sign in.");
+        customer = await customers.verify(h.replace(/^Bearer\s+/i, ""), req.headers["x-customer-mode"]);
+      } else if (route.opts.auth !== false) {
         const h = req.headers.authorization || "";
         if (!h.startsWith("Bearer ")) throw new HttpError(401, "Please sign in.");
         user = await verifyIdToken(h.slice(7)).catch(() => null);
@@ -283,7 +305,8 @@ export function createHandler({ store, config, verifyIdToken, shopify, authServi
         }
       }
       const ip = String(req.headers["x-forwarded-for"] || req.socket.remoteAddress || "").split(",")[0].trim();
-      const result = await route.fn({ user, params, query: Object.fromEntries(url.searchParams), body, raw, headers: req.headers, ip });
+      const result = await route.fn({ user, customer, res, cors, params, query: Object.fromEntries(url.searchParams), body, raw, headers: req.headers, ip });
+      if (result === HANDLED) return undefined;
       return json(res, 200, result, cors);
     } catch (e) {
       if (e instanceof HttpError) return json(res, e.status, { error: e.message, code: e.code }, cors);

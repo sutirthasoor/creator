@@ -26,6 +26,7 @@ export function PartnerLayout({ children }) {
   return (
     <div className="pt-app">
       <Bar label="Partner area">
+        <Link className="pt-bar-link" to="/">Back to store</Link>
         {status === "authed" && me && (
           <>
             <span className="pt-bar-user">{me.email}</span>

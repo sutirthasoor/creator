@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import crypto from "node:crypto";
 import http from "node:http";
 import { createMemoryStore } from "../src/store.memory.js";
-import { toPaise, bpsOf } from "../src/util.js";
+import { toPaise, bpsOf, HttpError } from "../src/util.js";
 import { signToken, verifyToken } from "../src/token.js";
 import { handleOrderPaid, handleRefund, handleFullReversal } from "../src/orders.js";
 import { approveCommissions, promoteDue, createPayout, markPayoutPaid, adjustCommission, cancelPayout } from "../src/lifecycle.js";
@@ -684,5 +684,76 @@ test("an admin token cannot use the partner area, and a partner token cannot use
     assert.equal((await call("POST", "/api/influencer/apply", { token: "tok-admin", body: { name: "x", pitch: "y".repeat(30) } })).status, 403);
     assert.equal((await call("GET", "/api/influencer/dashboard", { token: "tok-riya" })).status, 200);
     assert.equal((await call("GET", "/api/admin/influencers", { token: "tok-riya" })).status, 403);
+  } finally { close(); }
+});
+
+/* ---------------- e-book library ---------------- */
+
+test("library: paying unlocks the book, a refund locks it, and only the buyer can read it", async () => {
+  const store = createMemoryStore();
+  const fetched = [];
+  const pdf = async (url) => { fetched.push(String(url)); return new Response("%PDF-1.4 test book", { status: 200, headers: { "content-type": "application/octet-stream" } }); };
+  const customers = { verify: async (t) => {
+    if (t === "cust-buyer") return { email: "Buyer@Example.com".toLowerCase() };
+    if (t === "cust-other") return { email: "other@example.com" };
+    throw new HttpError(401, "Please sign in again.");
+  } };
+  const { call, close } = await serve(store, { customers, fetchImpl: pdf });
+  try {
+    const o = order({ id: 61, email: "Buyer@example.com" });
+    await pay(store, o, "w-lib-1");
+    assert.equal(store._dump("access").length, 1, "one access record per book");
+    await pay(store, o, "w-lib-1"); // webhook repeats
+    assert.equal(store._dump("access").length, 1);
+
+    // admin pastes the Drive link; junk is refused; customers cannot do this
+    const link = "https://drive.google.com/file/d/1AbCdEfGhIjKlMnOpQrStUv/view?usp=sharing";
+    assert.equal((await call("PUT", "/api/admin/ebooks/555", { token: "tok-admin", body: { title: "Masterbook", url: "http://insecure.example/x.pdf" } })).status, 400);
+    assert.equal((await call("PUT", "/api/admin/ebooks/555", { token: "tok-admin", body: { title: "Masterbook", url: "https://localhost/x.pdf" } })).status, 400);
+    assert.equal((await call("PUT", "/api/admin/ebooks/abc", { token: "tok-admin", body: { url: link } })).status, 400);
+    assert.equal((await call("PUT", "/api/admin/ebooks/555", { token: "tok-riya", body: { url: link } })).status, 403);
+    assert.equal((await call("PUT", "/api/admin/ebooks/555", { token: "tok-admin", body: { title: "Masterbook", url: link } })).status, 200);
+
+    // library needs a customer sign-in
+    assert.equal((await call("GET", "/api/library")).status, 401);
+    assert.equal((await call("GET", "/api/library", { token: "wrong" })).status, 401);
+    const mine = await call("GET", "/api/library", { token: "cust-buyer" });
+    assert.equal(mine.status, 200);
+    assert.deepEqual(mine.json.items.map((i) => [i.productId, i.title, i.ready]), [["555", "Masterbook", true]]);
+    assert.equal(JSON.stringify(mine.json).includes("drive.google"), false, "the Drive link never reaches the browser");
+    assert.deepEqual((await call("GET", "/api/library", { token: "cust-other" })).json.items, []);
+
+    // a stranger cannot open it; the buyer gets a short-lived reading address
+    assert.equal((await call("POST", "/api/library/555/open", { token: "cust-other", body: {} })).status, 403);
+    const opened = await call("POST", "/api/library/555/open", { token: "cust-buyer", body: {} });
+    assert.equal(opened.status, 200);
+    const file = await call("GET", `/api/library/file/${opened.json.token}`);
+    assert.equal(file.status, 200);
+    assert.equal(file.headers.get("content-type"), "application/pdf");
+    assert.match(file.headers.get("content-security-policy"), /frame-ancestors 'self' https:\/\/creatormoves365\.in/);
+    assert.deepEqual(fetched, ["https://drive.usercontent.google.com/download?id=1AbCdEfGhIjKlMnOpQrStUv&export=download&confirm=t"]);
+    assert.equal((await call("GET", "/api/library/file/garbage")).status, 401);
+
+    // a refund locks the book again, even for a reading address that is still valid
+    await handleRefund(store, { refund: { id: 9, order_id: 61, refund_line_items: [{ line_item_id: 610, quantity: 1 }], transactions: [{ kind: "refund", status: "success", amount: "2100.00" }] }, now: T0 });
+    assert.equal(store._dump("access")[0].status, "revoked");
+    assert.deepEqual((await call("GET", "/api/library", { token: "cust-buyer" })).json.items, []);
+    assert.equal((await call("POST", "/api/library/555/open", { token: "cust-buyer", body: {} })).status, 403);
+    assert.equal((await call("GET", `/api/library/file/${opened.json.token}`)).status, 403);
+  } finally { close(); }
+});
+
+test("library: cancelled orders lock the book, and a book without a link says it is being prepared", async () => {
+  const store = createMemoryStore();
+  const customers = { verify: async () => ({ email: "buyer@example.com" }) };
+  const { call, close } = await serve(store, { customers });
+  try {
+    await pay(store, order({ id: 62 }), "w-lib-2");
+    const l = await call("GET", "/api/library", { token: "x" });
+    assert.equal(l.json.items[0].ready, false);
+    assert.equal((await call("POST", "/api/library/555/open", { token: "x", body: {} })).status, 409);
+    await handleFullReversal(store, { orderId: 62, topic: "orders/cancelled", now: T0 });
+    assert.equal(store._dump("access")[0].status, "revoked");
+    assert.equal((await call("POST", "/api/library/555/open", { token: "x", body: {} })).status, 403);
   } finally { close(); }
 });

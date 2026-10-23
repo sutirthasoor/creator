@@ -9,6 +9,8 @@ import Cart from "./pages/Cart.jsx";
 import Auth from "./pages/Auth.jsx";
 import AuthCallback from "./pages/AuthCallback.jsx";
 import Account from "./pages/Account.jsx";
+import Library from "./pages/Library.jsx";
+import Reader from "./pages/Reader.jsx";
 import About from "./pages/About.jsx";
 import Contact from "./pages/Contact.jsx";
 import Placeholder from "./pages/Placeholder.jsx";
@@ -107,6 +109,8 @@ export default function App() {
           <Route path="/login" element={<Navigate to="/auth" replace />} />
           <Route path="/signup" element={<Navigate to="/auth?mode=signup" replace />} />
           <Route path="/account" element={<Account />} />
+          <Route path="/library" element={<Library />} />
+          <Route path="/library/:productId" element={<Reader />} />
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/ai" element={<Placeholder title="AI Library" />} />
