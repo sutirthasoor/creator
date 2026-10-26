@@ -18,6 +18,13 @@ export function buildRefundTransactions(orderGid, suggested) {
     .map((t) => ({ orderId: orderGid, gateway: t.gateway, kind: "REFUND", parentId: t.parentTransaction.id, amount: t.amountSet.shopMoney.amount }));
 }
 
+// Shopify requires an idempotency key on refundCreate. The key is made from the exact refund being sent, so a
+// retry of the same refund can never pay out twice, while a changed refund gets a fresh key.
+export function refundIdempotencyKey(orderGid, items, transactions) {
+  const h = crypto.createHash("sha256").update(JSON.stringify({ orderGid, items, transactions })).digest("hex");
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20, 32)}`;
+}
+
 export function createShopifyAdmin({ domain, token, clientId, clientSecret, version, fetchImpl = fetch }) {
   const enabled = Boolean(domain && (token || (clientId && clientSecret)));
   let cached = null;
@@ -75,8 +82,8 @@ export function createShopifyAdmin({ domain, token, clientId, clientSecret, vers
       const transactions = buildRefundTransactions(gid, sug.order.suggestedRefund.suggestedTransactions);
       if (!transactions.length) throw new Error("Shopify found no payment to refund.");
       const data = await gql(
-        `mutation($input: RefundInput!) { refundCreate(input: $input) { refund { id } userErrors { field message } } }`,
-        { input: { orderId: gid, note: note || "Customer refund request", notify: true, refundLineItems: items.map((i) => ({ ...i, restockType: "NO_RESTOCK" })), shipping: { fullRefund: true }, transactions } }
+        `mutation($input: RefundInput!, $key: String!) { refundCreate(input: $input) @idempotent(key: $key) { refund { id } userErrors { field message } } }`,
+        { key: refundIdempotencyKey(gid, items, transactions), input: { orderId: gid, note: note || "Customer refund request", notify: true, refundLineItems: items.map((i) => ({ ...i, restockType: "NO_RESTOCK" })), shipping: { fullRefund: true }, transactions } }
       );
       const out = data.refundCreate;
       if (out.userErrors && out.userErrors.length) throw new Error(out.userErrors.map((e) => e.message).join("; "));
