@@ -57,16 +57,6 @@ export default function Header() {
             </Link>
             <CurrencySwitcher />
             <CartLink className={CART_LINK} />
-            <div className="flex items-center gap-2">
-              {isAuthed ? (
-                <Link className={BTN_SIGNUP_DESKTOP} to="/account">Account</Link>
-              ) : (
-                <>
-                  <Link className={BTN_SIGNIN_DESKTOP} to="/auth">Sign in</Link>
-                  <Link className={BTN_SIGNUP_DESKTOP} to="/auth?mode=signup">Create account</Link>
-                </>
-              )}
-            </div>
             <button
               className={BTN_MENU}
               type="button"

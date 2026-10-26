@@ -3,9 +3,11 @@
   "private": true,
   "type": "module",
   "main": "index.js",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
-    "start": "node index.js",
+    "start": "node init && node index.js",
     "test": "node --test tests/affiliate.test.js tests/ebooks.test.js tests/refunds.test.js",
     "make-admin": "node scripts/make-admin.js"
   },
