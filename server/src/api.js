@@ -7,6 +7,7 @@ import { applyAsInfluencer, updateOwnProfile, changeStatus, setInfluencerRate, s
 import { HANDLED, listLibrary, openBook, streamBook, listEbooks, setEbook } from "./library.js";
 import { influencerSummary, REPORTS, toCsv } from "./reports.js";
 import { requestRefund, listMyOrders, listRefundRequests, approveRefund, rejectRefund, completeRefundRequest } from "./refunds.js";
+import { reconcileRefunds } from "./reconcile.js";
 
 const json = (res, status, body, headers = {}) => {
   res.writeHead(status, { "Content-Type": "application/json", "Cache-Control": "no-store", ...headers });
@@ -106,17 +107,26 @@ export function createHandler({ store, config, verifyIdToken, shopify, authServi
     const topic = headers["x-shopify-topic"];
     const webhookId = headers["x-shopify-webhook-id"];
     const now = clock();
-    switch (topic) {
-      case "orders/paid": return handleOrderPaid(store, { order: body, webhookId, secret: config.attributionSecret, now });
-      case "refunds/create": {
-        const result = await handleRefund(store, { refund: body, webhookId, now });
-        // If a customer asked for this refund, close their request (a no-op for refunds nobody asked for).
-        await completeRefundRequest(store, { orderId: body.order_id, refundId: body.id, reversedPaise: result.reversedPaise, now });
-        return result;
+    // Logged so a missing refund can be traced in the host's logs: if this line never appears for a refund,
+    // Shopify is not sending refunds/create to this server (check Settings > Notifications > Webhooks).
+    console.log(`[webhook] ${topic} order=${body.order_id || body.id} id=${webhookId || "-"}`);
+    try {
+      switch (topic) {
+        case "orders/paid": return await handleOrderPaid(store, { order: body, webhookId, secret: config.attributionSecret, now });
+        case "refunds/create": {
+          const result = await handleRefund(store, { refund: body, webhookId, now });
+          // If a customer asked for this refund, close their request (a no-op for refunds nobody asked for).
+          await completeRefundRequest(store, { orderId: body.order_id, refundId: body.id, reversedPaise: result.reversedPaise, now });
+          console.log(`[webhook] refund ${body.id} applied: ${JSON.stringify(result)}`);
+          return result;
+        }
+        case "orders/cancelled": return await handleFullReversal(store, { orderId: body.id, topic, webhookId, now });
+        case "disputes/create": return await handleFullReversal(store, { orderId: body.order_id, topic, ref: body.id, webhookId, now });
+        default: return { ignored: topic };
       }
-      case "orders/cancelled": return handleFullReversal(store, { orderId: body.id, topic, webhookId, now });
-      case "disputes/create": return handleFullReversal(store, { orderId: body.order_id, topic, ref: body.id, webhookId, now });
-      default: return { ignored: topic };
+    } catch (e) {
+      console.error(`[webhook] ${topic} failed: ${e && e.message}`);
+      throw e;
     }
   });
 
@@ -178,7 +188,7 @@ export function createHandler({ store, config, verifyIdToken, shopify, authServi
   add("GET", "/api/influencer/commissions", {}, async ({ user }) => {
     const inf = await requireInfluencer(user);
     const rows = await store.query("commissions", { where: [["influencerId", "==", inf.id]], orderBy: ["createdAt", "desc"], limit: 200 });
-    return { commissions: rows.map((c) => ({ order: c.orderName, date: c.createdAt, state: c.state, grossPaise: c.grossPaise, reversedPaise: c.reversedPaise, adjustmentPaise: c.adjustmentPaise || 0, holdUntil: c.holdUntil })) };
+    return { commissions: rows.map((c) => ({ order: c.orderName, date: c.createdAt, state: c.state, grossPaise: c.grossPaise, reversedPaise: c.reversedPaise, adjustmentPaise: c.adjustmentPaise || 0, holdUntil: c.holdUntil, clawbackPaise: c.clawbackPaise || 0, clawbackSettledPaise: c.clawbackSettledPaise || 0 })) };
   });
 
   add("GET", "/api/influencer/payouts", {}, async ({ user }) => {
@@ -245,6 +255,8 @@ export function createHandler({ store, config, verifyIdToken, shopify, authServi
   add("POST", "/api/admin/commissions/:id/adjust", { perm: "finance" }, async ({ user, params, body }) =>
     adjustCommission(store, params.id, body, user, { now: clock() }));
   add("POST", "/api/admin/jobs/promote", { perm: "finance" }, async () => promoteDue(store, { now: clock() }));
+  // Asks Shopify for refunds this server missed (webhook not set up, switched off, or server was down) and applies them.
+  add("POST", "/api/admin/jobs/reconcile-refunds", { perm: "finance" }, async () => reconcileRefunds(store, shopify, { now: clock() }));
 
   add("GET", "/api/admin/payouts", { perm: "finance" }, async ({ query }) => {
     const where = query.status ? [["status", "==", query.status]] : [];

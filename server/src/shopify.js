@@ -25,6 +25,23 @@ export function refundIdempotencyKey(orderGid, items, transactions) {
   return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20, 32)}`;
 }
 
+const gidTail = (gid) => String(gid).split("/").pop();
+
+// Admin GraphQL order -> { cancelled, refunds: [webhook-shaped refund] }.
+export function shapeShopifyOrder(node) {
+  const orderId = gidTail(node.id);
+  return {
+    cancelled: Boolean(node.cancelledAt),
+    refunds: (node.refunds || []).map((r) => ({
+      id: gidTail(r.id), order_id: orderId,
+      refund_line_items: ((r.refundLineItems && r.refundLineItems.nodes) || []).map((li) => ({ line_item_id: gidTail(li.lineItem.id), quantity: li.quantity })),
+      transactions: ((r.transactions && r.transactions.nodes) || []).map((t) => ({
+        kind: String(t.kind || "").toLowerCase(), status: String(t.status || "").toLowerCase(), amount: t.amountSet && t.amountSet.shopMoney && t.amountSet.shopMoney.amount,
+      })),
+    })),
+  };
+}
+
 export function createShopifyAdmin({ domain, token, clientId, clientSecret, version, fetchImpl = fetch }) {
   const enabled = Boolean(domain && (token || (clientId && clientSecret)));
   let cached = null;
@@ -65,6 +82,24 @@ export function createShopifyAdmin({ domain, token, clientId, clientSecret, vers
       const out = data.discountCodeBasicCreate;
       if (out.userErrors && out.userErrors.length) throw new Error(out.userErrors.map((e) => e.message).join("; "));
       return { id: out.codeDiscountNode.id };
+    },
+    // Reads the refunds (and cancellation) Shopify holds for these orders, in the same shape as the refunds/create
+    // webhook. This is the safety net for webhooks that never arrived or were switched off by Shopify.
+    async fetchOrderRefunds(orderIds) {
+      if (!enabled) throw new Error("Shopify is not connected.");
+      const out = new Map();
+      for (let i = 0; i < orderIds.length; i += 40) {
+        const ids = orderIds.slice(i, i + 40).map((id) => `gid://shopify/Order/${id}`);
+        const data = await gql(
+          `query($ids: [ID!]!) { nodes(ids: $ids) { ... on Order { id cancelledAt refunds { id refundLineItems(first: 50) { nodes { quantity lineItem { id } } } transactions(first: 20) { nodes { kind status amountSet { shopMoney { amount } } } } } } } }`,
+          { ids }
+        );
+        for (const n of data.nodes || []) {
+          if (!n || !n.id) continue;
+          out.set(gidTail(n.id), shapeShopifyOrder(n));
+        }
+      }
+      return out;
     },
     // Refunds everything left on an order back to the original payment. Shopify then sends the
     // refunds/create webhook, which is what reverses the influencer's commission.

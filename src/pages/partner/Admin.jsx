@@ -100,7 +100,7 @@ function InfluencerDetail({ id, onClose, onChanged }) {
 
 export const commissionColumns = [
   { key: "orderName", label: "Order" }, { key: "createdAt", label: "Date", render: (r) => day(r.createdAt) },
-  { key: "state", label: "Status", render: (r) => <>{<Badge value={r.state} />}{r.flagged && <span className="cm-flag" title="Flagged for review"> ⚑</span>}</> },
+  { key: "state", label: "Status", render: (r) => <>{<Badge value={r.state} />}{r.flagged && <span className="cm-flag" title="Flagged for review"> ⚑</span>}{r.state !== "reversed" && r.reversedPaise > 0 && <> <Badge value={r.grossPaise + (r.adjustmentPaise || 0) - r.reversedPaise <= 0 ? "refunded" : "partially_refunded"} /></>}{(r.clawbackPaise || 0) > (r.clawbackSettledPaise || 0) && <span className="cm-flag" title="Already paid out. This is taken off the partner's next payout."> clawback {inr((r.clawbackPaise || 0) - (r.clawbackSettledPaise || 0))}</span>}</> },
   { key: "grossPaise", label: "Commission", align: "right", render: money("grossPaise") },
   { key: "reversedPaise", label: "Reversed", align: "right", render: (r) => (r.reversedPaise ? `−${inr(r.reversedPaise)}` : "–") },
   { key: "net", label: "Net", align: "right", render: (r) => inr(Math.max(0, r.grossPaise + (r.adjustmentPaise || 0) - (r.reversedPaise || 0))) },

@@ -12,6 +12,7 @@ import { createStaticHandler } from "./src/static.js";
 import { createIdentity } from "./src/shopifySession.js";
 import { createCustomerVerifier } from "./src/library.js";
 import { promoteDue } from "./src/lifecycle.js";
+import { reconcileRefunds } from "./src/reconcile.js";
 
 loadEnvFile();
 const config = loadConfig();
@@ -76,5 +77,18 @@ async function promote() {
 }
 promote();
 setInterval(promote, config.promoteEveryMinutes * 60_000).unref();
+
+// Refund safety net: asks Shopify for refunds the webhook missed, so a refunded order always loses its commission
+// and its e-book access. Harmless when nothing was missed.
+async function reconcile() {
+  try {
+    const r = await reconcileRefunds(store, shopify);
+    if (r.applied) console.log(`Reconciled ${r.applied} missed refund(s)/cancellation(s)`);
+  } catch (e) {
+    console.error("reconcileRefunds failed", e);
+  }
+}
+setTimeout(reconcile, 30_000).unref();
+setInterval(reconcile, Math.max(5, config.promoteEveryMinutes) * 60_000).unref();
 
 for (const sig of ["SIGTERM", "SIGINT"]) process.on(sig, () => server.close(() => process.exit(0)));

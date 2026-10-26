@@ -101,7 +101,10 @@ export async function listRefundRequests(store, { status } = {}) {
       ...r,
       commission: c ? {
         influencerId: c.influencerId, influencerCode: c.influencerCode, state: c.state,
+        // What is still at stake (before the refund) and what has already been taken off (after it).
         deductionPaise: effective(c), asClawback: isLocked(c),
+        reversedPaise: c.reversedPaise || 0, clawbackPaise: c.clawbackPaise || 0,
+        clawbackOutstandingPaise: Math.max(0, (c.clawbackPaise || 0) - (c.clawbackSettledPaise || 0)),
       } : null,
     });
   }
@@ -137,8 +140,12 @@ export async function approveRefund(store, id, { note } = {}, admin, { shopify, 
 
   await store.transaction(async (tx) => {
     const r = await tx.get("refundRequests", claimed.id);
+    // Shopify's refunds/create webhook can arrive before this line runs and already close the request as
+    // "refunded". Never move a request backwards, or it stays on "approved" forever.
+    const done = r.status === "refunded";
     tx.merge("refundRequests", claimed.id, {
-      status: "approved", decidedAt: now, decidedBy: by, decisionNote: decisionNote || null, shopifyRefundId: refund.id || null,
+      ...(done ? {} : { status: "approved" }),
+      decidedAt: now, decidedBy: by, decisionNote: decisionNote || null, shopifyRefundId: refund.id || null,
       history: [...(r.history || []), { at: now, status: "approved", by, note: decisionNote }],
     });
     audit(tx, admin, "refund_approved", claimed.orderId, { amountPaise: claimed.amountPaise, shopifyRefundId: refund.id || null }, now);

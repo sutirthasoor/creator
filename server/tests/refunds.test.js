@@ -316,3 +316,100 @@ test("http: approving with Shopify disconnected explains what to do", async () =
     assert.match(r.json.error, /Shopify dashboard/);
   } finally { close(); }
 });
+
+/* ---------- refunds the webhook did not deliver, and the approve/webhook race ---------- */
+import { reconcileRefunds } from "../src/reconcile.js";
+import { shapeShopifyOrder } from "../src/shopify.js";
+
+test("approving a refund: a webhook that lands first does not leave the request stuck on 'approved'", async () => {
+  const store = await setup();
+  await requestRefund(store, { email: BUYER, orderId: "1", reason: "changed my mind" }, { now: later(1) });
+  const shopify = fakeShopify();
+  shopify.refundOrder = async () => {
+    // Shopify's webhook is processed before refundOrder() returns to approveRefund.
+    const r = await handleRefund(store, { refund: shopifyRefund(1), webhookId: "wh-refund", now: later(1) });
+    await completeRefundRequest(store, { orderId: 1, refundId: 9, reversedPaise: r.reversedPaise, now: later(1) });
+    return { id: "gid://shopify/Refund/9" };
+  };
+  await approveRefund(store, "1", { note: "ok" }, admin, { shopify, now: later(1) });
+  const r = await store.get("refundRequests", "1");
+  assert.equal(r.status, "refunded");
+  assert.equal(r.shopifyRefundId, "gid://shopify/Refund/9");
+  assert.equal(r.commissionReversedPaise, 21000);
+});
+
+test("refund list shows what was reversed, not just what is left", async () => {
+  const store = await setup();
+  await requestRefund(store, { email: BUYER, orderId: "1", reason: "x" }, { now: later(1) });
+  const r = await handleRefund(store, { refund: shopifyRefund(1), now: later(1) });
+  await completeRefundRequest(store, { orderId: 1, refundId: 9, reversedPaise: r.reversedPaise, now: later(1) });
+  const row = (await listRefundRequests(store, {})).requests[0];
+  assert.equal(row.status, "refunded");
+  assert.equal(row.commission.reversedPaise, 21000);
+  assert.equal(row.commission.deductionPaise, 0);
+});
+
+test("a refund still marked pending (UPI) is counted and ends access", async () => {
+  const store = await setup();
+  await handleRefund(store, { refund: { ...shopifyRefund(1), transactions: [{ kind: "refund", status: "pending", amount: "2100.00" }] }, now: later(1) });
+  assert.equal((await store.get("orders", "1")).status, "refunded");
+  assert.deepEqual((await listLibrary(store, BUYER)).items, []);
+});
+
+function fakeShopifyOrders(byOrder) {
+  return { enabled: true, async fetchOrderRefunds(ids) { return new Map(ids.filter((i) => byOrder[i]).map((i) => [i, byOrder[i]])); } };
+}
+
+test("reconcile: a refund the webhook missed reverses the commission and locks the book; running it twice changes nothing", async () => {
+  const store = await setup();
+  assert.equal((await listLibrary(store, BUYER)).items.length, 1);
+  const shopify = fakeShopifyOrders({ 1: { cancelled: false, refunds: [shopifyRefund(1, "77")] } });
+  const first = await reconcileRefunds(store, shopify, { now: later(2) });
+  assert.equal(first.applied, 1);
+  assert.equal(first.reversedPaise, 21000);
+  assert.deepEqual((await listLibrary(store, BUYER)).items, []);
+  const c = await store.get("commissions", "1");
+  assert.equal(c.state, "reversed");
+  assert.equal(c.reversedPaise, 21000);
+  const again = await reconcileRefunds(store, shopify, { now: later(2) });
+  assert.equal(again.applied, 0);
+  assert.equal((await store.get("commissions", "1")).reversedPaise, 21000);
+});
+
+test("reconcile: the real webhook arriving after reconcile does not deduct twice", async () => {
+  const store = await setup();
+  await reconcileRefunds(store, fakeShopifyOrders({ 1: { cancelled: false, refunds: [shopifyRefund(1, "77")] } }), { now: later(2) });
+  const r = await handleRefund(store, { refund: shopifyRefund(1, "77"), webhookId: "late-webhook", now: later(2) });
+  assert.equal(r.duplicate, true);
+  assert.equal((await store.get("commissions", "1")).reversedPaise, 21000);
+});
+
+test("reconcile: a refund after payout becomes a clawback, and a cancelled order is closed", async () => {
+  const store = await setup();
+  await store.merge("commissions", "1", { state: "paid", payoutId: "p1", payoutItemPaise: 21000 });
+  await reconcileRefunds(store, fakeShopifyOrders({ 1: { cancelled: false, refunds: [shopifyRefund(1, "78")] } }), { now: later(30) });
+  const c = await store.get("commissions", "1");
+  assert.equal(c.state, "paid");
+  assert.equal(c.clawbackPaise, 21000);
+
+  await pay(store, order(2, { token: linkToken() }));
+  await reconcileRefunds(store, fakeShopifyOrders({ 2: { cancelled: true, refunds: [] } }), { now: later(2) });
+  assert.equal((await store.get("orders", "2")).status, "cancelled");
+  assert.equal((await store.get("commissions", "2")).state, "reversed");
+});
+
+test("reconcile does nothing, and says why, when Shopify is not connected", async () => {
+  const store = await setup();
+  const r = await reconcileRefunds(store, { enabled: false });
+  assert.equal(r.applied, 0);
+  assert.match(r.skipped, /not connected/);
+});
+
+test("Shopify's GraphQL order is turned into the webhook shape", () => {
+  const shaped = shapeShopifyOrder({
+    id: "gid://shopify/Order/5", cancelledAt: null,
+    refunds: [{ id: "gid://shopify/Refund/9", refundLineItems: { nodes: [{ quantity: 1, lineItem: { id: "gid://shopify/LineItem/50" } }] },
+      transactions: { nodes: [{ kind: "REFUND", status: "SUCCESS", amountSet: { shopMoney: { amount: "2100.0" } } }] } }],
+  });
+  assert.deepEqual(shaped, { cancelled: false, refunds: [{ id: "9", order_id: "5", refund_line_items: [{ line_item_id: "50", quantity: 1 }], transactions: [{ kind: "refund", status: "success", amount: "2100.0" }] }] });
+});

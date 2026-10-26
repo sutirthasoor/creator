@@ -182,7 +182,11 @@ function Earnings() {
   if (error) return <Notice>{error}</Notice>;
   return <Table rows={data.commissions} empty="No commission yet." rowKey={(r) => r.order} columns={[
     { key: "order", label: "Order" }, { key: "date", label: "Date", render: (r) => day(r.date) },
-    { key: "state", label: "Status", render: (r) => <Badge value={r.state} /> },
+    { key: "state", label: "Status", render: (r) => <>
+      <Badge value={r.state} />
+      {r.state !== "reversed" && r.reversedPaise > 0 && <> <Badge value={r.grossPaise + (r.adjustmentPaise || 0) - r.reversedPaise <= 0 ? "refunded" : "partially_refunded"} /></>}
+      {(r.clawbackPaise || 0) > (r.clawbackSettledPaise || 0) && <span className="cm-fineprint"> Refunded after payout: {inr((r.clawbackPaise || 0) - (r.clawbackSettledPaise || 0))} comes off your next payout</span>}
+    </> },
     { key: "holdUntil", label: "Payable from", render: (r) => (["pending", "approved"].includes(r.state) ? day(r.holdUntil) : "–") },
     { key: "grossPaise", label: "Commission", align: "right", render: (r) => inr(r.grossPaise) },
     { key: "reversedPaise", label: "Reversed", align: "right", render: (r) => (r.reversedPaise ? `−${inr(r.reversedPaise)}` : "–") },

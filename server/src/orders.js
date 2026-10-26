@@ -90,7 +90,8 @@ export async function handleRefund(store, { refund, webhookId, now = nowIso() })
   const orderId = String(refund.order_id);
   const refundId = String(refund.id);
   const eventKey = webhookId || `refunds-create:${refundId}`;
-  const txns = (refund.transactions || []).filter((t) => t.kind === "refund" && (!t.status || t.status === "success"));
+  // A refund that is still "pending" (common with UPI / Razorpay) is money already on its way back, so it counts.
+  const txns = (refund.transactions || []).filter((t) => t.kind === "refund" && (!t.status || ["success", "pending"].includes(String(t.status).toLowerCase())));
   const refundedPaise = txns.reduce((s, t) => s + toPaise(t.amount), 0);
 
   return store.transaction(async (tx) => {

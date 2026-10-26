@@ -7,6 +7,11 @@ import { Badge, Notice, Loading, Table, useLoad, day } from "./ui.jsx";
 function impact(r) {
   const c = r.commission;
   if (!c) return "No partner commission";
+  // Already refunded: say what was actually taken off, not what is left (which is now zero).
+  if (r.status === "refunded" || c.reversedPaise) {
+    if (!c.reversedPaise) return `${c.influencerCode}: nothing was deducted`;
+    return `${c.influencerCode}: −${inr(c.reversedPaise)} reversed ${c.clawbackPaise ? (c.clawbackOutstandingPaise ? "(already paid out, taken off their next payout)" : "(already paid out, taken off a payout)") : "(taken off before payout)"}`;
+  }
   if (!c.deductionPaise) return `${c.influencerCode}: nothing left to deduct`;
   return `${c.influencerCode}: −${inr(c.deductionPaise)} ${c.asClawback ? "(already paid out, taken off their next payout)" : "(taken off before payout)"}`;
 }
@@ -17,6 +22,18 @@ export function Refunds() {
   const [msg, setMsg] = useState({ kind: "success", text: "" });
   const [busy, setBusy] = useState(false);
   const { data, error, loading, reload } = useLoad(() => api(`/admin/refunds?status=${encodeURIComponent(status)}`), [status]);
+
+  // Asks Shopify for refunds this server never heard about and applies them (commission reversed, access ended).
+  async function checkShopify() {
+    setBusy(true); setMsg({ kind: "success", text: "" });
+    try {
+      const r = await api("/admin/jobs/reconcile-refunds", { method: "POST", body: {} });
+      setMsg(r.skipped
+        ? { kind: "error", text: r.skipped }
+        : { kind: "success", text: r.applied ? `Found ${r.applied} refund(s) Shopify had not told us about. Commission reversed and e-book access ended.` : `Checked ${r.checked} recent order(s). Nothing was missing.` });
+      reload();
+    } catch (err) { setMsg({ kind: "error", text: err.message }); } finally { setBusy(false); }
+  }
 
   async function submit(e) {
     e.preventDefault();
@@ -45,6 +62,7 @@ export function Refunds() {
           <option value="rejected">Declined</option>
           <option value="">All</option>
         </select></Field>
+        <button type="button" className="cm-btn cm-btn-outline cm-btn-sm" disabled={busy} onClick={checkShopify} title="Finds refunds made in Shopify that did not reach this site">Check Shopify for missed refunds</button>
       </div>
       <Notice kind={msg.kind}>{msg.text}</Notice>
 
