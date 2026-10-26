@@ -1,9 +1,8 @@
 node_modules
 dist
-.env
-.env.local
 server/.env
 .firebaserc
 .firebase
 *.log
 serviceAccount*.json
+config.bat

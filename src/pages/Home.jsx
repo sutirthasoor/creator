@@ -107,10 +107,24 @@ export function HowTo() {
       </ol>
       <div className="master-watch home-reveal">
         <div className="master-watch-image">
-          <Img src="/assets/home-workflow-CYQZ6RR0.webp" alt="Creative planning workspace with visual reference sheets" loading="lazy" width={1024} height={768} />
-          <span className="master-watch-icon" aria-hidden="true"><Play size={30} fill="currentColor" /></span>
-          <span className="master-watch-label">WORKFLOW IMAGE PREVIEW · NOT A VIDEO</span>
-        </div>
+  <div style={{ position: 'relative', width: '100%', height: 0, paddingBottom: '56.250%' }}>
+    <iframe
+      allow="fullscreen"
+      allowFullScreen
+      src="https://streamable.com/e/9tjsg0?"
+      style={{
+        border: 'none',
+        width: '100%',
+        height: '100%',
+        position: 'absolute',
+        left: 0,
+        top: 0,
+        overflow: 'hidden',
+      }}
+    />
+  </div>
+  <span className="master-watch-label">WORKFLOW VIDEO PREVIEW</span>
+</div>
         <div className="master-watch-copy">
           <h3>Watch <span className="master-gradient-text">How It Works</span></h3>
           <p>Move from an idea to a visual reference, then shape the result for your own work.</p>
