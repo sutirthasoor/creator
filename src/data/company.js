@@ -22,3 +22,15 @@ export const CONTACT_TOPICS = [
   "Business or partnership",
   "Something else",
 ];
+
+// Terms used across the legal pages. Edit them here and every policy page follows.
+export const POLICY = {
+  updated: "26 October 2026",
+  refundWindowDays: 7,        // how long after payment a refund request can be raised
+  refundProcessingDays: "5–7 business days", // after a refund is approved
+  accessDelay: "a few minutes",              // normal time for access to open after payment
+  accessEscalationHours: 24,                 // after this long without access, write to us
+  supportReply: "2 business days",
+  jurisdiction: "Patna, Bihar, India",
+  paymentGateway: "Razorpay",
+};

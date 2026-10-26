@@ -4,10 +4,12 @@ import { LogOut, Mail, Phone, Receipt, ExternalLink, BookOpen } from "lucide-rea
 import { useAuth } from "../context/AuthContext.jsx";
 import { useCart } from "../context/CartContext.jsx";
 import { formatMoney, formatDate, humanize } from "../lib/money.js";
+import { useCurrency } from "../lib/currency.js";
 
 export default function Account() {
   const { status, customer, logout } = useAuth();
   const { reset } = useCart();
+  useCurrency(); // re-render when the display currency changes
   const navigate = useNavigate();
   const [leaving, setLeaving] = useState(false);
 

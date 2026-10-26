@@ -1,6 +1,8 @@
 import { formatMoney, discountPercent } from "../lib/money.js";
+import { useCurrency } from "../lib/currency.js";
 
 export default function Price({ price, maxPrice, compareAtPrice, large = false }) {
+  useCurrency(); // re-render when the display currency changes
   if (!price) return null;
   const range = maxPrice && Number(maxPrice.amount) > Number(price.amount);
   const off = discountPercent(price, compareAtPrice);

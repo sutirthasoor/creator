@@ -3,12 +3,15 @@ import { Minus, Plus, Trash2, ArrowRight, ShoppingCart, CircleAlert, Info } from
 import ProductMedia from "../components/ProductMedia.jsx";
 import DemoBanner from "../components/DemoBanner.jsx";
 import { formatMoney } from "../lib/money.js";
+import { useCurrency } from "../lib/currency.js";
+import CurrencyNote from "../components/CurrencyNote.jsx";
 import { useCart } from "../context/CartContext.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 
 export default function Cart() {
   const { cart, loading, busy, error, isDemo, setQty, remove, checkout } = useCart();
   const { authMode, isAuthed } = useAuth();
+  useCurrency(); // re-render when the display currency changes
   const lines = (cart && cart.lines) || [];
   const hasUnavailable = lines.some((l) => !l.availableForSale);
 
@@ -60,6 +63,7 @@ export default function Cart() {
                 <div><dt>Subtotal</dt><dd>{formatMoney(cart.subtotal)}</dd></div>
               </dl>
               <p className="cm-fineprint">Taxes and any shipping are calculated at checkout.</p>
+              <CurrencyNote />
 
               {error && (
                 <div className="cm-notice cm-notice-error" role="alert">

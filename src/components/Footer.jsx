@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { Crown, Sparkles, ArrowUpRight } from "lucide-react";
-import { FOOTER_COLUMNS } from "../data/content.js";
+import { FOOTER_COLUMNS, LEGAL_LINKS } from "../data/content.js";
 
 export default function Footer() {
   const { pathname } = useLocation();
@@ -70,9 +70,16 @@ export default function Footer() {
         </div>
 
         <div className="site-footer-reveal flex flex-col gap-3 border-t border-footer-line py-6 text-xs leading-relaxed text-footer-muted md:flex-row md:items-start md:justify-between md:gap-6">
-          <span>© 2026 Creator Moves 365 · AA100X Tech</span>
+          <div className="flex min-w-0 flex-col gap-2">
+            <span>© 2026 Creator Moves 365 · AA100X Tech</span>
+            <nav aria-label="Legal" className="cm-footer-legal">
+              {LEGAL_LINKS.map((l) => (
+                <Link key={l.to} className="site-footer-link !min-h-0 !py-0" to={l.to}>{l.label}</Link>
+              ))}
+            </nav>
+          </div>
           <div className="flex min-w-0 flex-col items-start gap-2 md:max-w-2xl md:flex-row md:gap-5 md:text-right">
-            <Link className="site-footer-link shrink-0 !min-h-0 !py-0" to="/affiliate">Affiliate</Link>
+            
             <span>Other catalog listings are demonstration data; prices, terms and partner details are placeholders, not approved business terms.</span>
           </div>
         </div>

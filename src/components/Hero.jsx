@@ -3,9 +3,11 @@ import { Link } from "react-router-dom";
 import { Check, BookOpen, LockKeyhole, Target, WandSparkles, Sparkles, Lightbulb, FileText, ArrowRight, Crown } from "lucide-react";
 import Img from "./Img.jsx";
 import { HERO_SLIDES, PRICING, PRODUCT_TITLE } from "../data/content.js";
+import { useCurrency } from "../lib/currency.js";
 import { BTN_HERO_CTA } from "../cls.js";
 
 export default function Hero() {
+  const { money } = useCurrency();
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const count = HERO_SLIDES.length;
@@ -43,12 +45,12 @@ export default function Hero() {
             <Link aria-label="Get the eBook at the launch discount price" className="home-hero-price-link flex items-stretch overflow-hidden" to="/products">
               <div className="home-hero-price-original flex flex-col justify-center gap-1">
                 <span className="text-[10px] font-semibold uppercase text-muted-foreground">Original</span>
-                <span className="font-display text-base font-bold text-muted-foreground line-through sm:text-lg">{PRICING.original}</span>
+                <span className="font-display text-base font-bold text-muted-foreground line-through sm:text-lg">{money(PRICING.originalAmount)}</span>
               </div>
               <div className="home-hero-price-current flex flex-[1.3] items-center justify-between gap-2">
                 <div className="flex flex-col">
                   <span className="text-[10px] font-semibold uppercase text-primary-foreground/90">Launch discount active</span>
-                  <span className="font-display text-2xl font-bold text-primary-foreground sm:text-[28px]">{PRICING.current}</span>
+                  <span className="font-display text-2xl font-bold text-primary-foreground sm:text-[28px]">{money(PRICING.currentAmount)}</span>
                 </div>
                 <span className="home-hero-discount shrink-0 text-[10px] font-semibold">{PRICING.discount}% off</span>
               </div>
@@ -94,7 +96,7 @@ export default function Hero() {
           <div className="master-book-scene" aria-label={`${PRODUCT_TITLE} book mockup`}>
             <div className="master-book-cover">
               <Img
-                src="/assets/masterbook-cover-art-DzA6LFXW.jpg"
+                src="https://creatormoves365.in/assets/masterbook-cover-art-DzA6LFXW.jpg"
                 alt="Silhouette of a creator in a neon-lit studio on the Masterbook cover"
                 width={1024}
                 height={1536}

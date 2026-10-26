@@ -3,32 +3,35 @@ export const PRODUCT_TITLE = "The Top Secret Content Collection Book Of The Vira
 export const PRICING = {
   original: "₹21,000",
   current: "₹2,100",
+  // Numeric INR amounts, so the currency converter can show the same price in other currencies.
+  originalAmount: 21000,
+  currentAmount: 2100,
   discount: 90,
 };
 
 export const NAV_LINKS = [
-  { label: "How It Works", to: "/#how-to-use" },
-  { label: "What’s Inside", to: "/#whats-inside" },
-  { label: "Who It’s For", to: "/#who-its-for" },
-  { label: "FAQ", to: "/#faq" },
+  { label: "How It Works", to: "/how-it-works", page: true },
+  { label: "What’s Inside", to: "/whats-inside", page: true },
+  { label: "Who It’s For", to: "/who-its-for", page: true },
+  { label: "FAQ", to: "/faq", page: true },
   { label: "Products", to: "/products", page: true },
   { label: "About Us", to: "/about", page: true },
   { label: "Contact Us", to: "/contact", page: true },
 ];
 
 export const HERO_SLIDES = [
-  { src: "/assets/creator-success-montage-hF58bINx.jpg", alt: "Fictional creators filming fashion, food, travel, beauty, fitness and podcast content" },
-  { src: "/assets/hero-slide-2-CKMCee4o.jpg", alt: "Fictional social media creators filming in a neon-lit studio" },
-  { src: "/assets/hero-slide-3-BB5KV_uM.jpg", alt: "Fictional podcast creator recording at a studio microphone" },
-  { src: "/assets/hero-slide-4-Biv42pRq.jpg", alt: "Fictional beauty creator filming a tutorial with a ring light" },
-  { src: "/assets/hero-slide-5-D_NN3XUF.jpg", alt: "Fictional food creator plating a dish while filming" },
+  { src: "https://creatormoves365.in/assets/hero-slide-2-CKMCee4o.jpg", alt: "Fictional creators filming fashion, food, travel, beauty, fitness and podcast content" },
+  { src: "https://creatormoves365.in/assets/hero-slide-3-BB5KV_uM.jpg", alt: "Fictional social media creators filming in a neon-lit studio" },
+  { src: "https://creatormoves365.in/assets/hero-slide-4-Biv42pRq.jpg", alt: "Fictional podcast creator recording at a studio microphone" },
+  { src: "https://creatormoves365.in/assets/creator-success-montage-hF58bINx.jpg", alt: "Fictional beauty creator filming a tutorial with a ring light" },
+  { src: "https://creatormoves365.in/assets/hero-slide-5-D_NN3XUF.jpg", alt: "Fictional food creator plating a dish while filming" },
 ];
 
 export const VISUAL_STRIP = [
-  { src: "/assets/home-neon-BWadRMhr.webp", alt: "Neon-lit creator portrait" },
-  { src: "/assets/home-cat-lifestyle-DigpY6TR.webp", alt: "Creator portrait in a colorful studio" },
-  { src: "/assets/home-cat-motion-B1cCA8IZ.webp", alt: "Creator in motion" },
-  { src: "/assets/home-cat-comedy-Dmw3qqbT.webp", alt: "Expressive creator portrait" },
+  { src: "https://creatormoves365.in/assets/home-neon-BWadRMhr.webp", alt: "Neon-lit creator portrait" },
+  { src: "https://creatormoves365.in/assets/home-cat-lifestyle-DigpY6TR.webp", alt: "Creator portrait in a colorful studio" },
+  { src: "https://creatormoves365.in/assets/home-cat-motion-B1cCA8IZ.webp", alt: "Creator in motion" },
+  { src: "https://creatormoves365.in/assets/home-cat-comedy-Dmw3qqbT.webp", alt: "Expressive creator portrait" },
 ];
 
 export const FEATURES = [
@@ -48,10 +51,10 @@ export const PREVIEW_PAGES = [
 ];
 
 export const STEPS = [
-  { img: "/assets/masterbook-still-FUiOujKq.jpg", title: "Get the Masterbook", text: "Place your order and keep your private order link." },
-  { img: "/assets/home-workflow-CYQZ6RR0.webp", title: "Read Step-by-Step", text: "Open a chapter, case study or studio prompt after verified payment." },
-  { img: "/assets/home-neon-BWadRMhr.webp", title: "Apply the Strategies", text: "Try the direction in your preferred AI or content tool." },
-  { img: "/assets/home-cat-lifestyle-DigpY6TR.webp", title: "Adapt & Publish", text: "Make the result yours before sharing it." },
+  { img: "https://creatormoves365.in/assets/masterbook-still-FUiOujKq.jpg", title: "Get the Masterbook", text: "Place your order and keep your private order link." },
+  { img: "https://creatormoves365.in/assets/home-workflow-CYQZ6RR0.webp", title: "Read Step-by-Step", text: "Open a chapter, case study or studio prompt after verified payment." },
+  { img: "https://creatormoves365.in/assets/home-neon-BWadRMhr.webp", title: "Apply the Strategies", text: "Try the direction in your preferred AI or content tool." },
+  { img: "https://creatormoves365.in/assets/home-cat-lifestyle-DigpY6TR.webp", title: "Adapt & Publish", text: "Make the result yours before sharing it." },
 ];
 
 export const WATCH_POINTS = [
@@ -79,23 +82,30 @@ export const FAQ = [
 export const FOOTER_COLUMNS = [
   { title: "Masterbook", links: [
     { label: "Products", to: "/products" },
-    { label: "What’s Inside", to: "/#whats-inside" },
-    { label: "How to Use", to: "/#how-to-use" },
-    { label: "Who It’s For", to: "/#who-its-for" },
-    { label: "FAQ", to: "/#faq" },
-  ]},
-  { title: "AI Library", links: [
-    { label: "Explore AI Library", to: "/ai" },
-    { label: "Categories", to: "/ai/categories" },
-    { label: "Gallery", to: "/ai/gallery" },
-    { label: "Plans", to: "/ai/pricing" },
+    { label: "What’s Inside", to: "/whats-inside" },
+    { label: "How to Use", to: "/how-it-works" },
+    { label: "Who It’s For", to: "/who-its-for" },
+    { label: "FAQ", to: "/faq" },
   ]},
   { title: "Company", links: [
     { label: "About", to: "/about" },
     { label: "Contact", to: "/contact" },
+    { label: "Affiliate", to: "/affiliate" },
   ]},
   { title: "Legal", links: [
+    { label: "Terms & Conditions", to: "/terms" },
+    { label: "Privacy Policy", to: "/privacy" },
+    { label: "Refund & Cancellation", to: "/refund-policy" },
+    { label: "Shipping & Delivery", to: "/shipping-policy" },
     { label: "Masterbook policies", to: "/policies" },
     { label: "AI Library policies", to: "/ai/policies" },
   ]},
+];
+
+export const LEGAL_LINKS = [
+  { label: "Terms & Conditions", to: "/terms" },
+  { label: "Privacy Policy", to: "/privacy" },
+  { label: "Refund & Cancellation", to: "/refund-policy" },
+  { label: "Shipping & Delivery", to: "/shipping-policy" },
+  { label: "Contact Us", to: "/contact" },
 ];

@@ -1,8 +1,17 @@
 import { SHOPIFY } from "./config.js";
+import { convert, formatAmount, getCurrencyState } from "./currency.js";
 
+// Shows an amount in the visitor's chosen display currency (see lib/currency.js). Amounts that
+// already are in that currency are formatted as-is. Discount maths below stays in the original
+// currency, so percentages never change with the display currency.
 export function formatMoney(m, locale = SHOPIFY.locale) {
   if (!m) return "";
   const n = Number(m.amount);
+  const { currency } = getCurrencyState();
+  if (m.currencyCode && m.currencyCode !== currency) {
+    const converted = convert(n, m.currencyCode, currency);
+    if (converted !== n || currency === m.currencyCode) return formatAmount(converted, currency);
+  }
   try {
     return new Intl.NumberFormat(locale, {
       style: "currency",

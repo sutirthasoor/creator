@@ -87,7 +87,7 @@ export default function About() {
             </div>
           </div>
           <div className="cm-about-hero-visual" aria-hidden="true">
-            <Img src="/assets/home-neon-BWadRMhr.webp" alt="" loading="eager" />
+            <Img src="https://creatormoves365.in/assets/home-neon-BWadRMhr.webp" alt="" loading="eager" />
           </div>
         </section>
 

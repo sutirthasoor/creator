@@ -14,6 +14,12 @@ import Reader from "./pages/Reader.jsx";
 import About from "./pages/About.jsx";
 import Contact from "./pages/Contact.jsx";
 import Placeholder from "./pages/Placeholder.jsx";
+import HowItWorks from "./pages/HowItWorks.jsx";
+import WhatsInside from "./pages/WhatsInside.jsx";
+import WhoItsFor from "./pages/WhoItsFor.jsx";
+import FaqPage from "./pages/FaqPage.jsx";
+import Policies from "./pages/legal/Policies.jsx";
+import { Terms, Privacy, RefundPolicy, ShippingPolicy } from "./pages/legal/LegalPage.jsx";
 import Partner from "./pages/partner/Partner.jsx";
 import PartnerAuth from "./pages/partner/PartnerAuth.jsx";
 import Admin from "./pages/partner/Admin.jsx";
@@ -32,6 +38,15 @@ function titleFor(pathname, search) {
     case "/account": return `Your account — ${SUFFIX}`;
     case "/about": return `About Us — ${SUFFIX}`;
     case "/contact": return `Contact Us — ${SUFFIX}`;
+    case "/how-it-works": return `How It Works — ${SUFFIX}`;
+    case "/whats-inside": return `What’s Inside — ${SUFFIX}`;
+    case "/who-its-for": return `Who It’s For — ${SUFFIX}`;
+    case "/faq": return `FAQ — ${SUFFIX}`;
+    case "/terms": return `Terms & Conditions — ${SUFFIX}`;
+    case "/privacy": return `Privacy Policy — ${SUFFIX}`;
+    case "/refund-policy": return `Refund & Cancellation Policy — ${SUFFIX}`;
+    case "/shipping-policy": return `Shipping & Delivery Policy — ${SUFFIX}`;
+    case "/policies": return `Policies — ${SUFFIX}`;
     case "/auth":
       return mode === "signup" ? `Create account — ${SUFFIX}`
         : mode === "forgot" ? `Reset password — ${SUFFIX}`
@@ -113,12 +128,20 @@ export default function App() {
           <Route path="/library/:productId" element={<Reader />} />
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
+          <Route path="/how-it-works" element={<HowItWorks />} />
+          <Route path="/whats-inside" element={<WhatsInside />} />
+          <Route path="/who-its-for" element={<WhoItsFor />} />
+          <Route path="/faq" element={<FaqPage />} />
+          <Route path="/terms" element={<Terms />} />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/refund-policy" element={<RefundPolicy />} />
+          <Route path="/shipping-policy" element={<ShippingPolicy />} />
           <Route path="/ai" element={<Placeholder title="AI Library" />} />
           <Route path="/ai/categories" element={<Placeholder title="Categories" />} />
           <Route path="/ai/gallery" element={<Placeholder title="Gallery" />} />
           <Route path="/ai/pricing" element={<Placeholder title="Plans" />} />
           <Route path="/ai/policies" element={<Placeholder title="AI Library policies" />} />
-          <Route path="/policies" element={<Placeholder title="Masterbook policies" />} />
+          <Route path="/policies" element={<Policies />} />
           <Route path="/affiliate" element={<Navigate to="/partner" replace />} />
           <Route path="*" element={<Placeholder title="Page not found" />} />
         </Routes>

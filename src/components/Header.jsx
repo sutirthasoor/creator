@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Crown, ArrowUpRight, ShoppingCart, Menu } from "lucide-react";
 import { NAV_LINKS } from "../data/content.js";
+import CurrencySwitcher from "./CurrencySwitcher.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useCart } from "../context/CartContext.jsx";
 import {
@@ -54,6 +55,7 @@ export default function Header() {
             <Link className={BTN_PRIMARY_HEADER} to="/products">
               Get Masterbook <ArrowUpRight size={15} aria-hidden="true" />
             </Link>
+            <CurrencySwitcher />
             <CartLink className={CART_LINK} />
             <div className="flex items-center gap-2">
               {isAuthed ? (
@@ -81,7 +83,7 @@ export default function Header() {
         <nav
           id="site-mobile-navigation"
           aria-label="Masterbook navigation"
-          className={`site-mobile-nav absolute inset-x-0 top-full max-h-[calc(100dvh-4rem)] overflow-y-auto border-t border-border bg-card p-4 text-sm shadow-xl sm:hidden ${open ? "site-mobile-nav-open" : ""}`}
+          className={`site-mobile-nav absolute inset-x-0 top-full max-h-[calc(100dvh-4rem)] overflow-y-auto border-t border-border bg-card p-4 text-sm shadow-xl ${open ? "site-mobile-nav-open" : ""}`}
           aria-hidden={!open}
           inert={open ? undefined : ""}
         >

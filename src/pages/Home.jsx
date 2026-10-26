@@ -10,11 +10,12 @@ import {
   VISUAL_STRIP, FEATURES, PREVIEW_PAGES, STEPS, WATCH_POINTS,
   AUDIENCE, FAQ, PRICING, PRODUCT_TITLE,
 } from "../data/content.js";
+import { useCurrency } from "../lib/currency.js";
 import { BTN_ICON_OUTLINE, BTN_ICON_GHOST, BTN_FINAL_CTA } from "../cls.js";
 
 const ICONS = { Compass, Target, Sparkles, WandSparkles, BookOpen, Lightbulb };
 
-function Inside() {
+export function Inside() {
   return (
     <section id="whats-inside" className="master-section master-inside" aria-labelledby="inside-title">
       <div className="master-inside-head home-reveal">
@@ -38,11 +39,12 @@ function Inside() {
   );
 }
 
-function Preview() {
+export function Preview() {
   const [step, setStep] = useState(0);
   const last = PREVIEW_PAGES.length - 1;
   return (
-    <section className="master-preview master-section" aria-labelledby="preview-title">
+<section className="master-preview master-section" aria-labelledby="preview-title" style={{ marginBottom: '40px' }}>
+
       <div className="master-preview-head">
         <div className="home-reveal">
           <h2 id="preview-title">See What <span className="master-gradient-text">You'll Get</span></h2>
@@ -86,7 +88,7 @@ function Preview() {
   );
 }
 
-function HowTo() {
+export function HowTo() {
   return (
     <section id="how-to-use" className="master-section master-how" aria-labelledby="how-title">
       <div className="master-heading home-reveal">
@@ -123,7 +125,7 @@ function HowTo() {
   );
 }
 
-function Audience() {
+export function Audience() {
   return (
     <section id="who-its-for" className="master-section master-audience" aria-labelledby="audience-title">
       <div className="master-heading home-reveal">
@@ -145,7 +147,7 @@ function Audience() {
   );
 }
 
-function Faq() {
+export function Faq() {
   return (
     <section id="faq" className="master-section master-faq" aria-labelledby="faq-title">
       <div className="master-faq-intro home-reveal">
@@ -168,12 +170,13 @@ function Faq() {
   );
 }
 
-function Final() {
+export function Final() {
+  const { money } = useCurrency();
   return (
     <section className="master-final home-reveal" aria-labelledby="final-title">
       <div className="master-final-copy">
         <h2 id="final-title">Start Your Influencer Journey Today</h2>
-        <p>{PRODUCT_TITLE} · One-time purchase <span className="master-final-price">{PRICING.current}</span></p>
+        <p>{PRODUCT_TITLE} · One-time purchase <span className="master-final-price">{money(PRICING.currentAmount)}</span></p>
         <Link className={BTN_FINAL_CTA} to="/products">
           Get Your Masterbook Now <ArrowRight size={18} aria-hidden="true" />
         </Link>

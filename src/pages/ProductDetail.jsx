@@ -4,6 +4,7 @@ import { Minus, Plus, ShoppingCart, Check, BookOpen, LockKeyhole, ShieldCheck, A
 import ProductMedia from "../components/ProductMedia.jsx";
 import ProductCard from "../components/ProductCard.jsx";
 import Price from "../components/Price.jsx";
+import CurrencyNote from "../components/CurrencyNote.jsx";
 import DemoBanner from "../components/DemoBanner.jsx";
 import { getProduct, getRecommendations } from "../lib/commerce.js";
 import { useCart } from "../context/CartContext.jsx";
@@ -200,6 +201,7 @@ export default function ProductDetail() {
             {product.productType && <span className="cm-tag">{product.productType}</span>}
             <h1 className="cm-detail-title">{product.title}</h1>
             <Price price={shownPrice} compareAtPrice={shownCompare} large />
+            <CurrencyNote />
 
             {paragraphs.length > 0 && (
               <div className="cm-prose cm-detail-desc">
