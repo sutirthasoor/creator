@@ -44,11 +44,6 @@ export default function Cart() {
                     <span className="cm-line-unit">{formatMoney(l.price)}{l.compareAtPrice && <s>{formatMoney(l.compareAtPrice)}</s>}</span>
                     {!l.availableForSale && <span className="cm-badge cm-badge-out">No longer available</span>}
                     <div className="cm-line-actions">
-                      <div className="cm-qty" role="group" aria-label={`Quantity for ${l.productTitle}`}>
-                        <button type="button" aria-label="Decrease quantity" disabled={busy} onClick={() => setQty(l.id, l.quantity - 1)}><Minus size={16} aria-hidden="true" /></button>
-                        <output>{l.quantity}</output>
-                        <button type="button" aria-label="Increase quantity" disabled={busy || l.quantity >= 99} onClick={() => setQty(l.id, l.quantity + 1)}><Plus size={16} aria-hidden="true" /></button>
-                      </div>
                       <button type="button" className="cm-remove" disabled={busy} onClick={() => remove(l.id)}>
                         <Trash2 size={16} aria-hidden="true" /> Remove
                       </button>

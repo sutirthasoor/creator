@@ -85,21 +85,7 @@ export default function Header() {
           aria-hidden={!open}
           inert={open ? undefined : ""}
         >
-          <div className="site-mobile-nav-primary">
-            {NAV_LINKS.map((l) => (
-              <Link key={l.to} className="site-mobile-nav-link site-section-link" to={l.to} onClick={close} {...activeProps(l)}>
-                {l.label}
-                <ArrowUpRight size={16} aria-hidden="true" />
-              </Link>
-            ))}
-            <Link className={BTN_MOBILE_CTA} to="/products" onClick={close}>
-              Get Masterbook <ArrowUpRight size={16} aria-hidden="true" />
-            </Link>
-          </div>
           <div className="site-mobile-nav-utilities">
-            <div className="flex items-center gap-2 sm:hidden">
-              <CartLink className={CART_LINK} onClick={close} />
-            </div>
             <div className={`grid gap-2 sm:hidden ${isAuthed ? "grid-cols-1" : "grid-cols-2"}`}>
               {isAuthed ? (
                 <Link className={BTN_SIGNUP_MOBILE} to="/account" onClick={close}>Account</Link>

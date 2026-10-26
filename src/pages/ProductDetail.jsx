@@ -22,7 +22,7 @@ function toSelection(variant) {
 
 export default function ProductDetail() {
   const { handle } = useParams();
-  const { add, busy, error: cartError, clearError, isDemo } = useCart();
+  const { cart, add, busy, error: cartError, clearError, isDemo } = useCart();
 
   const [product, setProduct] = useState(undefined); // undefined = loading, null = not found
   const [loadError, setLoadError] = useState("");
@@ -30,6 +30,7 @@ export default function ProductDetail() {
   const [activeImage, setActiveImage] = useState(0);
   const [qty, setQty] = useState(1);
   const [added, setAdded] = useState(false);
+  const [adding, setAdding] = useState(false); // local guard against double-clicks
   const [related, setRelated] = useState([]);
   const [attempt, setAttempt] = useState(0);
 
@@ -39,6 +40,7 @@ export default function ProductDetail() {
     setProduct(undefined);
     setLoadError("");
     setAdded(false);
+    setAdding(false);
     setQty(1);
     setActiveImage(0);
     setRelated([]);
@@ -81,6 +83,12 @@ export default function ProductDetail() {
     return product.image ? [product.image] : [];
   }, [product]);
 
+  // Is the currently selected variant already in the cart?
+  const inCart = useMemo(() => {
+    if (!variant || !cart || !Array.isArray(cart.lines)) return false;
+    return cart.lines.some((line) => line.variantId === variant.id || line.id === variant.id);
+  }, [variant, cart]);
+
   // Picking a variant that has its own photo switches the gallery to it.
   useEffect(() => {
     if (!variant || !variant.image) return;
@@ -92,15 +100,20 @@ export default function ProductDetail() {
     return product.variants.some(
       (v) =>
         v.availableForSale &&
-        v.selectedOptions.every((o) => (o.name === optionName ? o.value === value : selected[o.name] === o.value))
+        v.selectedOptions.every((o) => (o.name === optionName ? o.value === value : selected[o.name] === value))
     );
   }
 
   async function onAdd() {
-    if (!variant || !variant.availableForSale) return;
+    if (!variant || !variant.availableForSale || adding || inCart) return;
+    setAdding(true);
     setAdded(false);
-    const next = await add(variant.id, qty);
-    if (next) setAdded(true);
+    try {
+      const next = await add(variant.id, qty);
+      if (next) setAdded(true);
+    } finally {
+      setAdding(false);
+    }
   }
 
   /* ------------------------------ states ------------------------------ */
@@ -219,16 +232,26 @@ export default function ProductDetail() {
             ))}
 
             <div className="cm-buy">
-              <div className="cm-qty" role="group" aria-label="Quantity">
-                <button type="button" aria-label="Decrease quantity" disabled={qty <= 1} onClick={() => setQty((q) => Math.max(1, q - 1))}><Minus size={16} aria-hidden="true" /></button>
-                <output aria-live="polite">{qty}</output>
-                <button type="button" aria-label="Increase quantity" disabled={qty >= MAX_QTY} onClick={() => setQty((q) => Math.min(MAX_QTY, q + 1))}><Plus size={16} aria-hidden="true" /></button>
-              </div>
-              <button type="button" className="cm-btn cm-btn-primary cm-buy-btn" onClick={onAdd} disabled={!canBuy || busy}>
-                <ShoppingCart size={17} aria-hidden="true" />
-                {!variant ? "Unavailable" : !variant.availableForSale ? "Sold out" : busy ? "Adding…" : "Add to cart"}
+              <button
+                type="button"
+                className="cm-btn cm-btn-primary cm-buy-btn"
+                onClick={onAdd}
+                disabled={!canBuy || busy || adding || inCart}
+              >
+                {!variant ? "Unavailable"
+                  : !variant.availableForSale ? "Sold out"
+                  : inCart ? "Added to cart"
+                  : adding ? "Adding…"
+                  : "Add to cart"}
+                {inCart ? <Check size={17} aria-hidden="true" /> : <ShoppingCart size={17} aria-hidden="true" />}
               </button>
             </div>
+
+            {inCart && !added && (
+              <p className="cm-fineprint">
+                This item is in your cart. <Link className="cm-link" to="/cart">View cart</Link>
+              </p>
+            )}
 
             {added && (
               <div className="cm-notice cm-notice-success" role="status">
