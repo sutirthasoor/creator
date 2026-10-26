@@ -63,7 +63,8 @@ Runs on the **free Firebase plan**: Firestore is the only Firebase product used 
 - **Clicks** are logged by the server, which returns a signed attribution token. The storefront keeps it and attaches it to the Shopify cart (`cm_ref` cart attribute) so the paid order carries it.
 - **Shopify webhooks** (`orders/paid`, `refunds/create`, `orders/cancelled`, `disputes/create`) hit `/api/webhooks/shopify`. Signatures are checked, repeats are ignored, and each paid order creates at most one commission.
 - **Commission lifecycle:** Pending (hold period) > Approved > Payable > Paid, or Reversed. Refunds reverse the matching share; refunds after payment become a clawback netted off the next payout. Paid records are never rewritten.
-- **Admin** (`/admin`): influencers and applications, commissions, payouts (record UTR + date), reports with CSV export, affiliate rules, per-e-book rates, audit log.
+- **Customer refunds:** a customer asks for a refund from their account page (whole order, inside the refund window, default 7 days, set in Affiliate rules). An admin with the finance role approves or declines it in the **Refunds** tab. Approving makes Shopify return the money; Shopify's `refunds/create` webhook then deducts the partner's commission exactly as for any other refund (reduced before payout, or a clawback netted off the next payout if already paid) and ends the customer's access to the e-books. A refund made directly in the Shopify dashboard takes the same path, so a commission is never deducted twice.
+- **Admin** (`/admin`): influencers and applications, commissions, payouts (record UTR + date), refunds, reports with CSV export, affiliate rules, per-e-book rates, audit log.
 - Nothing business-related is hard-coded: rules live in Firestore and are edited in the admin panel.
 
 ## How the pieces connect
@@ -92,7 +93,7 @@ The server serves the built site (`dist`) and the API on one domain, so there is
    firebase deploy --only firestore
    ```
    Indexes take a few minutes to build. If a page shows an index error, the error contains a link that creates it.
-3. **Shopify app.** Shopify admin > Settings > Apps and sales channels > Develop apps opens the **Dev Dashboard**. Create an app, set the Admin API scopes `write_discounts` and `read_discounts`, release the version, install it on the store, and copy its **Client ID** and **Client secret**. The server fetches a short-lived Admin API token with them automatically.
+3. **Shopify app.** Shopify admin > Settings > Apps and sales channels > Develop apps opens the **Dev Dashboard**. Create an app, set the Admin API scopes `write_discounts`, `read_discounts` and `write_orders` (the last one lets the Refunds tab issue refunds), release the version, install it on the store, and copy its **Client ID** and **Client secret**. The server fetches a short-lived Admin API token with them automatically.
 4. **Server settings.**
    ```bash
    cd server && npm install
@@ -134,7 +135,7 @@ The same admin screens also open **inside Shopify admin**, as an embedded app. S
    - **App URL:** `https://YOUR-DOMAIN/shopify-admin`
    - **Embed app in Shopify admin:** on
    - **Allowed redirection URL(s):** `https://YOUR-DOMAIN/shopify-admin` (required by the form; this app does not use a redirect)
-   - **Scopes:** `write_discounts, read_discounts`
+   - **Scopes:** `write_discounts, read_discounts, write_orders`
 2. **Release** the version, then **install** the app on the store.
 3. In Shopify admin, open **Apps > Creator Moves 365 Affiliate**. Click the pin icon (or "Pin to navigation") to keep it in the sidebar.
 4. Set `SHOPIFY_CLIENT_ID`, `SHOPIFY_CLIENT_SECRET` and `SHOPIFY_STORE_DOMAIN` in `server/.env`. The server uses them to check the session token Shopify sends: it must be signed by your app and for your store, otherwise the request is refused.

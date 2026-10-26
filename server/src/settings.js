@@ -13,6 +13,7 @@ export const DEFAULT_SETTINGS = {
   conflictRule: "coupon", // when link and coupon belong to different partners: "coupon" or "link"
   selfReferral: "block", // "block" or "flag"
   couponDiscountBps: 1000,
+  refundWindowDays: 7, // customers can request a refund this many days after paying
 };
 
 export async function loadSettings(store) {
@@ -43,6 +44,7 @@ export function validateSettings(input, current) {
     if (!Number.isFinite(p) || p < 0 || p > 100) throw bad("Coupon discount must be between 0 and 100%.");
     s.couponDiscountBps = Math.round(p * 100);
   }
+  if (input.refundWindowDays !== undefined) s.refundWindowDays = int(input.refundWindowDays, "Refund window (days)", 0, 90);
   if (input.conflictRule !== undefined) {
     if (!["coupon", "link"].includes(input.conflictRule)) throw bad("Conflict rule must be coupon or link.");
     s.conflictRule = input.conflictRule;

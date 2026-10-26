@@ -19,7 +19,7 @@ so there is no second login.
    - **App URL:** `https://YOUR-DOMAIN/shopify-admin`
    - **Embed app in Shopify admin:** on
    - **Allowed redirection URL(s):** `https://YOUR-DOMAIN/shopify-admin` (the form needs one; this app does not use it)
-   - **Access scopes:** `write_discounts, read_discounts`
+   - **Access scopes:** `write_discounts, read_discounts, write_orders`
 4. Click **Release**.
 5. **Install** the app on your store. If the store belongs to a different organisation than the one that owns the app,
    use **Custom distribution** in the Dev Dashboard to get an install link, and open it as the store owner.

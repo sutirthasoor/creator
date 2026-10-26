@@ -6,6 +6,7 @@ import { approveCommissions, promoteDue, adjustCommission, createPayout, markPay
 import { applyAsInfluencer, updateOwnProfile, changeStatus, setInfluencerRate, setProductRate, recordClick } from "./influencers.js";
 import { HANDLED, listLibrary, openBook, streamBook, listEbooks, setEbook } from "./library.js";
 import { influencerSummary, REPORTS, toCsv } from "./reports.js";
+import { requestRefund, listMyOrders, listRefundRequests, approveRefund, rejectRefund, completeRefundRequest } from "./refunds.js";
 
 const json = (res, status, body, headers = {}) => {
   res.writeHead(status, { "Content-Type": "application/json", "Cache-Control": "no-store", ...headers });
@@ -49,6 +50,7 @@ export function createHandler({ store, config, verifyIdToken, shopify, authServi
   const applyLimit = limiter(10, 3_600_000);
   const authLimit = limiter(20, 600_000);
   const libLimit = limiter(120, 600_000);
+  const refundLimit = limiter(10, 3_600_000);
 
   const requirePerm = (user, perm) => {
     if (!ADMIN_ROLES.includes(user.role)) throw forbidden();
@@ -106,7 +108,12 @@ export function createHandler({ store, config, verifyIdToken, shopify, authServi
     const now = clock();
     switch (topic) {
       case "orders/paid": return handleOrderPaid(store, { order: body, webhookId, secret: config.attributionSecret, now });
-      case "refunds/create": return handleRefund(store, { refund: body, webhookId, now });
+      case "refunds/create": {
+        const result = await handleRefund(store, { refund: body, webhookId, now });
+        // If a customer asked for this refund, close their request (a no-op for refunds nobody asked for).
+        await completeRefundRequest(store, { orderId: body.order_id, refundId: body.id, reversedPaise: result.reversedPaise, now });
+        return result;
+      }
       case "orders/cancelled": return handleFullReversal(store, { orderId: body.id, topic, webhookId, now });
       case "disputes/create": return handleFullReversal(store, { orderId: body.order_id, topic, ref: body.id, webhookId, now });
       default: return { ignored: topic };
@@ -122,6 +129,13 @@ export function createHandler({ store, config, verifyIdToken, shopify, authServi
   add("GET", "/api/library/file/:token", { auth: false }, async ({ params, res, cors, ip }) => {
     libLimit(ip);
     return streamBook(store, params.token, { secret: config.attributionSecret, fetchImpl, res, headers: cors, frameOrigins: config.allowedOrigins || [] });
+  });
+
+  /* ---------- customer refunds (signed in with the store account) ---------- */
+  add("GET", "/api/account/orders", { auth: "customer" }, async ({ customer, ip }) => { libLimit(ip); return listMyOrders(store, customer.email, { now: clock() }); });
+  add("POST", "/api/account/orders/:orderId/refund-request", { auth: "customer" }, async ({ customer, params, body, ip }) => {
+    refundLimit(`${ip}:${customer.email}`);
+    return requestRefund(store, { email: customer.email, orderId: params.orderId, reason: body.reason }, { now: clock() });
   });
 
   /* ---------- signed-in user ---------- */
@@ -250,6 +264,12 @@ export function createHandler({ store, config, verifyIdToken, shopify, authServi
   add("GET", "/api/admin/ebooks", { perm: ["partners", "finance"] }, async () => ({ ebooks: await store.query("ebooks") }));
   add("PUT", "/api/admin/ebooks/:productId", { perm: ["partners", "finance"] }, async ({ user, params, body }) =>
     setEbook(store, params.productId, body, user, { now: clock() }));
+
+  add("GET", "/api/admin/refunds", { perm: "finance" }, async ({ query }) => listRefundRequests(store, { status: query.status }));
+  add("POST", "/api/admin/refunds/:id/approve", { perm: "finance" }, async ({ user, params, body }) =>
+    approveRefund(store, params.id, body, user, { shopify, now: clock() }));
+  add("POST", "/api/admin/refunds/:id/reject", { perm: "finance" }, async ({ user, params, body }) =>
+    rejectRefund(store, params.id, body, user, { now: clock() }));
 
   add("GET", "/api/admin/audit", { perm: "finance" }, async ({ query }) => {
     const where = query.action ? [["action", "==", query.action]] : [];

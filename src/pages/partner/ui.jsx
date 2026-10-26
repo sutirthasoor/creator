@@ -86,7 +86,7 @@ export function Stat({ label, value, hint, tone }) {
 }
 
 const TONES = {
-  active: "good", paid: "good", approved: "info", payable: "info", pending: "warn", submitted: "warn", under_review: "warn", processing: "warn",
+  active: "good", paid: "good", approved: "info", payable: "info", pending: "warn", submitted: "warn", under_review: "warn", processing: "warn", approving: "warn",
   rejected: "bad", suspended: "bad", reversed: "bad", cancelled: "bad", refunded: "bad", chargeback: "bad", partially_refunded: "warn",
 };
 export const Badge = ({ value }) => <span className={`pt-badge pt-badge-${TONES[value] || "muted"}`}>{humanize(value)}</span>;

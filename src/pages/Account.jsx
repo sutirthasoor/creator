@@ -5,6 +5,7 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { useCart } from "../context/CartContext.jsx";
 import { formatMoney, formatDate, humanize } from "../lib/money.js";
 import { useCurrency } from "../lib/currency.js";
+import AccountRefunds from "./AccountRefunds.jsx";
 
 export default function Account() {
   const { status, customer, logout } = useAuth();
@@ -59,6 +60,8 @@ export default function Account() {
             <p className="cm-muted">Read the e-books you have bought.</p>
             <Link className="cm-btn cm-btn-primary" to="/library">Open my library</Link>
           </section>
+
+          <AccountRefunds />
 
           <section className="cm-card cm-orders" aria-labelledby="orders-title">
             <h2 id="orders-title" className="cm-card-title"><Receipt size={18} aria-hidden="true" /> Recent orders</h2>

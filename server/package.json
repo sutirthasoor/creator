@@ -6,7 +6,7 @@
   "engines": { "node": ">=20" },
   "scripts": {
     "start": "node index.js",
-    "test": "node --test tests/affiliate.test.js",
+    "test": "node --test tests/affiliate.test.js tests/ebooks.test.js tests/refunds.test.js",
     "make-admin": "node scripts/make-admin.js"
   },
   "dependencies": {

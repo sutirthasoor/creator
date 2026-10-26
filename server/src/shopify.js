@@ -11,6 +11,13 @@ export function verifyWebhook(rawBody, headerHmac, secret) {
 // Minimal Admin GraphQL client, used only to create the influencer's discount code.
 // Two ways to authenticate: a Dev Dashboard app (clientId + clientSecret, token fetched with the
 // client credentials grant and refreshed before its ~24h expiry), or a fixed token from an older app.
+// Turns Shopify's suggested refund transactions into the transactions refundCreate expects.
+export function buildRefundTransactions(orderGid, suggested) {
+  return (suggested || [])
+    .filter((t) => t && t.parentTransaction && Number(t.amountSet && t.amountSet.shopMoney && t.amountSet.shopMoney.amount) > 0)
+    .map((t) => ({ orderId: orderGid, gateway: t.gateway, kind: "REFUND", parentId: t.parentTransaction.id, amount: t.amountSet.shopMoney.amount }));
+}
+
 export function createShopifyAdmin({ domain, token, clientId, clientSecret, version, fetchImpl = fetch }) {
   const enabled = Boolean(domain && (token || (clientId && clientSecret)));
   let cached = null;
@@ -51,6 +58,29 @@ export function createShopifyAdmin({ domain, token, clientId, clientSecret, vers
       const out = data.discountCodeBasicCreate;
       if (out.userErrors && out.userErrors.length) throw new Error(out.userErrors.map((e) => e.message).join("; "));
       return { id: out.codeDiscountNode.id };
+    },
+    // Refunds everything left on an order back to the original payment. Shopify then sends the
+    // refunds/create webhook, which is what reverses the influencer's commission.
+    async refundOrder({ orderId, note }) {
+      if (!enabled) throw new Error("Shopify is not connected.");
+      const gid = `gid://shopify/Order/${orderId}`;
+      const found = await gql(`query($id: ID!) { order(id: $id) { id lineItems(first: 100) { nodes { id refundableQuantity } } } }`, { id: gid });
+      if (!found.order) throw new Error("The order was not found in Shopify.");
+      const items = found.order.lineItems.nodes.filter((n) => n.refundableQuantity > 0).map((n) => ({ lineItemId: n.id, quantity: n.refundableQuantity }));
+      if (!items.length) throw new Error("Nothing is left to refund on this order.");
+      const sug = await gql(
+        `query($id: ID!, $items: [RefundLineItemInput!]) { order(id: $id) { suggestedRefund(refundLineItems: $items, refundShipping: true) { suggestedTransactions { gateway parentTransaction { id } amountSet { shopMoney { amount } } } } } }`,
+        { id: gid, items }
+      );
+      const transactions = buildRefundTransactions(gid, sug.order.suggestedRefund.suggestedTransactions);
+      if (!transactions.length) throw new Error("Shopify found no payment to refund.");
+      const data = await gql(
+        `mutation($input: RefundInput!) { refundCreate(input: $input) { refund { id } userErrors { field message } } }`,
+        { input: { orderId: gid, note: note || "Customer refund request", notify: true, refundLineItems: items.map((i) => ({ ...i, restockType: "NO_RESTOCK" })), shipping: { fullRefund: true }, transactions } }
+      );
+      const out = data.refundCreate;
+      if (out.userErrors && out.userErrors.length) throw new Error(out.userErrors.map((e) => e.message).join("; "));
+      return { id: out.refund.id };
     },
   };
 }

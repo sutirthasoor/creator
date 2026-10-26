@@ -29,3 +29,7 @@ export const listLibrary = (token) => call("/library", token);
 export const openBook = (token, productId) => call(`/library/${encodeURIComponent(productId)}/open`, token, { method: "POST", body: {} });
 // Address of the PDF for the reader. It is signed, works for a few minutes, and is checked again on every request.
 export const bookUrl = (readToken) => `${PARTNER.apiBase}/library/file/${readToken}`;
+
+// Refunds: the customer's orders with what they can do about each one, and the request itself.
+export const listMyOrders = (token) => call("/account/orders", token);
+export const requestRefund = (token, orderId, reason) => call(`/account/orders/${encodeURIComponent(orderId)}/refund-request`, token, { method: "POST", body: { reason } });

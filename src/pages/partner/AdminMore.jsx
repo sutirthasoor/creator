@@ -141,7 +141,7 @@ export function Rules() {
     rateType: s.defaultRate.type, rateValue: s.defaultRate.type === "percent" ? s.defaultRate.bps / 100 : s.defaultRate.paise / 100,
     commissionBase: s.commissionBase, excludeTax: s.excludeTax, holdDays: s.holdDays, autoApprove: s.autoApprove,
     minPayoutRupees: s.minPayoutPaise / 100, attributionWindowDays: s.attributionWindowDays, conflictRule: s.conflictRule,
-    selfReferral: s.selfReferral, couponDiscountPercent: s.couponDiscountBps / 100,
+    selfReferral: s.selfReferral, couponDiscountPercent: s.couponDiscountBps / 100, refundWindowDays: s.refundWindowDays,
   };
   const set = (k) => (e) => setF({ ...v, [k]: e.target.type === "checkbox" ? e.target.checked : e.target.value });
 
@@ -152,7 +152,7 @@ export function Rules() {
         defaultRate: { type: v.rateType, value: Number(v.rateValue) }, commissionBase: v.commissionBase, excludeTax: v.excludeTax,
         holdDays: Number(v.holdDays), autoApprove: v.autoApprove, minPayoutRupees: Number(v.minPayoutRupees),
         attributionWindowDays: Number(v.attributionWindowDays), conflictRule: v.conflictRule, selfReferral: v.selfReferral,
-        couponDiscountPercent: Number(v.couponDiscountPercent),
+        couponDiscountPercent: Number(v.couponDiscountPercent), refundWindowDays: Number(v.refundWindowDays),
       } });
       setMsg({ kind: "success", text: "Rules saved. They apply to new orders; past commissions keep the rules they were created under." }); setF(null); reload();
     } catch (err) { setMsg({ kind: "error", text: err.message }); }
@@ -177,6 +177,7 @@ export function Rules() {
           <Field id="ru-min" label="Minimum payout (₹)"><TextInput id="ru-min" inputMode="numeric" value={v.minPayoutRupees} onChange={set("minPayoutRupees")} /></Field>
           <Field id="ru-win" label="Attribution window (days)"><TextInput id="ru-win" inputMode="numeric" value={v.attributionWindowDays} onChange={set("attributionWindowDays")} /></Field>
           <Field id="ru-cd" label="Coupon discount for customers (%)"><TextInput id="ru-cd" inputMode="decimal" value={v.couponDiscountPercent} onChange={set("couponDiscountPercent")} /></Field>
+          <Field id="ru-refund" label="Refund window (days after payment)"><TextInput id="ru-refund" inputMode="numeric" value={v.refundWindowDays} onChange={set("refundWindowDays")} /></Field>
           <Field id="ru-conf" label="If link and coupon belong to different partners"><select id="ru-conf" className="cm-input" value={v.conflictRule} onChange={set("conflictRule")}><option value="coupon">Credit the coupon owner</option><option value="link">Credit the link owner</option></select></Field>
           <Field id="ru-self" label="Self-referral (partner buys via own link)"><select id="ru-self" className="cm-input" value={v.selfReferral} onChange={set("selfReferral")}><option value="block">Block commission</option><option value="flag">Allow but flag for review</option></select></Field>
         </div>
