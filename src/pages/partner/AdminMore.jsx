@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Plus } from "lucide-react";
 import { api, inr, rateText } from "../../lib/affiliateApi.js";
 import { Field, TextInput } from "../../components/Field.jsx";
 import { listProducts } from "../../lib/commerce.js";
@@ -229,6 +230,78 @@ export function Audit() {
   );
 }
 
+function NewEbook({ onCreated }) {
+  const [open, setOpen] = useState(false);
+  const [id, setId] = useState("");
+  const [title, setTitle] = useState("");
+  const [url, setUrl] = useState("");
+  const [msg, setMsg] = useState({ kind: "success", text: "" });
+  const [busy, setBusy] = useState(false);
+
+  function reset() {
+    setId(""); setTitle(""); setUrl(""); setMsg({ kind: "success", text: "" });
+  }
+
+  async function save(e) {
+    e.preventDefault();
+    const pid = id.trim();
+    if (!/^\d{1,20}$/.test(pid) && !/^demo-product-[a-z0-9-]+$/i.test(pid)) {
+      setMsg({ kind: "error", text: "Product ID must be the numeric Shopify product ID (or a demo-product-* id)." });
+      return;
+    }
+    if (!url.trim()) {
+      setMsg({ kind: "error", text: "Paste a Google Drive 'Anyone with the link' URL or an https link to the PDF." });
+      return;
+    }
+    setBusy(true); setMsg({ kind: "success", text: "" });
+    try {
+      await api(`/admin/ebooks/${encodeURIComponent(pid)}`, {
+        method: "PUT",
+        body: { title: title.trim(), url: url.trim() },
+      });
+      reset(); setOpen(false);
+      onCreated();
+    } catch (err) {
+      setMsg({ kind: "error", text: err.message });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!open) {
+    return (
+      <div className="cm-actions" style={{ marginBottom: 12 }}>
+        <button className="cm-btn cm-btn-primary" onClick={() => setOpen(true)}>
+          <Plus size={15} aria-hidden="true" /> Add e-book
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <form className="cm-card cm-form" onSubmit={save} style={{ marginBottom: 12 }}>
+      <h3 className="cm-card-title">Add an e-book</h3>
+      <p className="cm-muted">Use the numeric product ID from the Shopify product URL. The title is only a label for this row.</p>
+      <Notice kind={msg.kind}>{msg.text}</Notice>
+      <div className="cm-form-grid">
+        <Field id="ne-id" label="Shopify product ID">
+          <TextInput id="ne-id" value={id} onChange={(e) => setId(e.target.value)} required placeholder="15436375490749" />
+        </Field>
+        <Field id="ne-title" label="Title" optional>
+          <TextInput id="ne-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Shown next to the product ID" />
+        </Field>
+      </div>
+      <Field id="ne-url" label="PDF link">
+        <TextInput id="ne-url" value={url} onChange={(e) => setUrl(e.target.value)} required placeholder="https://drive.google.com/file/d/…/view" />
+      </Field>
+      <div className="cm-actions">
+        <button type="submit" className="cm-btn cm-btn-primary" disabled={busy}>{busy ? "Saving…" : "Create e-book"}</button>
+        <button type="button" className="cm-btn cm-btn-outline" onClick={() => { reset(); setOpen(false); }}>Cancel</button>
+      </div>
+    </form>
+  );
+}
+
 // E-books: paste the PDF link for each product. A customer who pays for the product can then read it in their library.
 export function Ebooks() {
   const { data, error, loading, reload } = useLoad(async () => {
@@ -262,6 +335,7 @@ export function Ebooks() {
   return (
     <>
       <p className="cm-muted">For each e-book, paste the PDF link (Google Drive: Share, then &ldquo;Anyone with the link&rdquo;). Customers who pay for it can read it in <strong>My library</strong>. They never see this link.</p>
+      <NewEbook onCreated={reload} />
       <Notice kind={msg.kind}>{msg.text}</Notice>
       <Table rows={data} empty="No products found. Add products in Shopify first." columns={[
         { key: "title", label: "E-book", render: (r) => <><strong>{r.title}</strong><br /><span className="cm-muted">Product ID {r.id}</span></> },
